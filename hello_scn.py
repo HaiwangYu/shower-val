@@ -37,7 +37,7 @@ if use_cuda:
 else:
     print("Not using CUDA.")
 
-model = Hello()
+model = ResNet()
 
 output = model([torch.LongTensor(pos),torch.FloatTensor(q).to(device)])
 
