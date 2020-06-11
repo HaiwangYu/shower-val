@@ -21,7 +21,7 @@ class ResNet(nn.Module):
             scn.BatchNormReLU(64),
             scn.SparseToDense(dimension, 64)).to(device)
         self.spatial_size= self.sparseModel.input_spatial_size(torch.LongTensor([1]*dimension))
-        self.inputLayer = scn.InputLayer(dimension,self.spatial_size,mode=3)
+        self.inputLayer = scn.InputLayer(dimension,self.spatial_size,mode=4)
         self.linear = nn.Linear(64, 1).to(device)
 
     def forward(self, x):
