@@ -3,30 +3,25 @@ import torch
 import torch.nn as nn
 import sparseconvnet as scn
 
+reps = 2 # Conv block repetition factor
+m = 32 # Unet number of features
+nPlanes = [m, 2*m, 4*m] # UNet number of features per level
+
 class DeepVtx(nn.Module):
     '''
-    dimention
+    spatialSize seems need to be 2^n
     '''
-    def __init__(self, dimension = 3, device = 'cuda'):
+    def __init__(self,  dimension = 3, device = 'cuda', spatialSize = 8, nIn = 3, nClasses = 1):
         nn.Module.__init__(self)
-        self.sparseModel = scn.Sequential(
-            scn.SubmanifoldConvolution(dimension, nIn=1, nOut=8, filter_size=3, bias=False),
-            scn.MaxPooling(dimension, pool_size=3, pool_stride=2),
-            scn.SparseResNet(dimension, 8, [
-                        ['b', 8, 2, 1],
-                        ['b', 16, 2, 2],
-                        ['b', 24, 2, 2],
-                        ['b', 32, 2, 2]]),
-            scn.Convolution(dimension,  nIn=32, nOut=64, filter_size=5, filter_stride=1, bias=False),
-            scn.BatchNormReLU(64),
-            scn.SparseToDense(dimension, 64)).to(device)
-        self.spatial_size= self.sparseModel.input_spatial_size(torch.LongTensor([1]*dimension))
-        self.inputLayer = scn.InputLayer(dimension,self.spatial_size,mode=4)
-        self.linear = nn.Linear(64, 1).to(device)
-
-    def forward(self, x):
-        x = self.inputLayer(x)
-        x = self.sparseModel(x)
-        x = x.view(-1, 64)
-        x = self.linear(x)
+        self.sparseModel = scn.Sequential().add(
+            scn.InputLayer(dimension, torch.LongTensor([spatialSize]*3), mode=4)).add(
+            scn.SubmanifoldConvolution(dimension, nIn, m, 3, False)).add(
+            scn.UNet(dimension, reps, nPlanes, residual_blocks=False, downsample=[2,2])).add(
+            scn.BatchNormReLU(m)).add(
+            scn.OutputLayer(dimension)).to(device)
+        self.inputLayer = scn.InputLayer(dimension, torch.LongTensor([spatialSize]*3), mode=4)
+        self.linear = nn.Linear(m, nClasses).to(device)
+    def forward(self,x):
+        x=self.sparseModel(x)
+        x=self.linear(x)
         return x

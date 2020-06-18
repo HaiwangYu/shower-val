@@ -3,40 +3,62 @@ import sparseconvnet as scn
 import uproot
 import matplotlib.pyplot as plt
 import numpy as np
-from model import ResNet
 from model import Hello
+from model import ResNet
+from model import DeepVtx
 
 from timeit import default_timer as timer
 
+def vtype_encodeing_func(type) :
+    if type == 0:
+        return 1
+    elif type == 2:
+        return 2
+    elif type == 6:
+        return 3
+    return 0
+vtype_encodeing = np.vectorize(vtype_encodeing_func)
+
 file = uproot.open('data/nue_7054_173_8677.root')
 tblob = file['T_rec_charge_blob']
+tvtx = file['T_vtx']
 
 x = tblob.array('x')
 y = tblob.array('y')
 z = tblob.array('z')
 q = tblob.array('q')
-print(len(x))
-print('x: {} {}'.format(np.min(x), np.max(x)))
-print('y: {} {}'.format(np.min(y), np.max(y)))
-print('z: {} {}'.format(np.min(z), np.max(z)))
-print('q: {} {}'.format(np.min(q), np.max(q)))
+blob_coords = np.stack((x,y,z), axis=1)
+blob_ft = np.stack((q,np.zeros_like(q),np.zeros_like(q)), axis=1)
+print(blob_coords.shape)
 
-max_pos = 10000
-x = np.linspace(0, max_pos-1, num=max_pos)
-y = np.linspace(0, max_pos-1, num=max_pos)
-z = np.linspace(0, max_pos-1, num=max_pos)
-q = np.linspace(42., 42., num=max_pos)
+vx = tvtx.array('x')
+vy = tvtx.array('y')
+vz = tvtx.array('z')
+vtype = vtype_encodeing(tvtx.array('type'))
+vmain = tvtx.array('flag_main')
+vtx_coords = np.stack((vx,vy,vz), axis=1)
+vtx_ft = np.stack((np.zeros_like(vtype),vtype,vmain), axis=1)
+# sort by vtype by decreasing order
+vtx_coords = vtx_coords[np.argsort(vtx_ft[:, 1])[::-1]]
+vtx_ft = vtx_ft[np.argsort(vtx_ft[:, 1])[::-1]]
+print(vtx_ft)
 
-pos = np.stack((x,y,z), axis=1)
-q = np.expand_dims(q, axis=1)
-# q = np.stack((q,q,q), axis=1)
+coords = np.concatenate((vtx_coords, blob_coords), axis=0)
+ft = np.concatenate((vtx_ft, blob_ft), axis=0)
+
+print(len(coords))
 
 # input visualize
 # fig = plt.figure()
-# ax = fig.add_subplot(111, projection='3d')
-# img = ax.scatter(x, y, z, c=q, cmap=plt.jet())
+# ax = fig.add_subplot(121, projection='3d')
+# coords = coords[0:len(vtype),]
+# ft = ft[0:len(vtype),]
+# img = ax.scatter(coords[:,0], coords[:,1], coords[:,2], c=ft[:,1], cmap=plt.jet())
+# ax = fig.add_subplot(122)
+# img = ax.scatter(coords[:,1], coords[:,2], c=ft[:,1], cmap=plt.jet())
 # fig.colorbar(img)
 # plt.show()
+# exit()
 
 # Use the GPU if there is one and sparseconvnet can use it, otherwise CPU
 use_cuda = torch.cuda.is_available() and scn.SCN.is_cuda_build()
@@ -45,27 +67,38 @@ if use_cuda:
     print("Using CUDA.")
 else:
     print("Not using CUDA.")
-
-model = ResNet(dimension=3, device=device)
+    
+model = DeepVtx(dimension=3, device=device)
 
 # check the SparseTenSor
-input_layer = model.inputLayer
-st = input_layer([torch.LongTensor(pos),torch.FloatTensor(q).to(device)])
-sl = st.get_spatial_locations()
-print('spatial_locations: ', sl.shape)
+# input_layer = model.inputLayer
+# st = input_layer([torch.LongTensor(pos),torch.FloatTensor(q).to(device)])
+# sl = st.get_spatial_locations()
+# print('spatial_locations: ', sl.shape)
 # fig = plt.figure()
 # ax = fig.add_subplot(111, projection='3d')
 # img = ax.scatter(sl[:,0], sl[:,1], sl[:,2], cmap=plt.jet())
 # fig.colorbar(img)
 # plt.show()
+# exit()
 
-nreapeat = 100
+nreapeat = 1
 # leave warmup outside the timer
-output = model([torch.LongTensor(pos),torch.FloatTensor(q).to(device)])
+output = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
 start = timer()
 for rep in range(nreapeat):
-    output = model([torch.LongTensor(pos),torch.FloatTensor(q).to(device)])
+    output = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
 end = timer()
 print('Forward time: {0:.1f} ms'.format((end-start)/nreapeat*1000))
 
-print('Output SparseConvNetTensor:', output)
+# print('Output SparseConvNetTensor:', output)
+
+# test segmentation results
+fig = plt.figure()
+ax = fig.add_subplot(121, projection='3d')
+ncand = np.count_nonzero(ft[:,1]==3)
+img = ax.scatter(coords[0:ncand,0], coords[0:ncand,1], coords[0:ncand,2], c=output.cpu().detach().numpy()[0:ncand], cmap=plt.jet())
+ax = fig.add_subplot(122)
+img = ax.scatter(coords[0:ncand,1], coords[0:ncand,2], c=output.cpu().detach().numpy()[0:ncand], cmap=plt.jet())
+fig.colorbar(img)
+plt.show()
