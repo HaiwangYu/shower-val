@@ -4,3 +4,5 @@ examples
 */__pycache__
 *log*
 *.swp
+*.csv
+checkpoints
