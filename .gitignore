@@ -1,5 +1,5 @@
 .vscode
-data
+data*
 examples
 */__pycache__
 *log*
