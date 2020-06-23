@@ -13,6 +13,16 @@ def vtype_encodeing_func(type) :
     return 0
 vtype_encodeing = np.vectorize(vtype_encodeing_func)
 
+def voxelize(coords) :
+    if len(coords.shape) != 2:
+        raise Exception('coords should have 2 dims')
+    
+    # all voxel indices needs to be non-negative
+    for i in range(coords.shape[1]) :
+        coords[:,i] = coords[:,i] - np.min(coords[:,i])
+    
+    return coords
+
 def load_vtx(meta, vis=False) :
 
     root_file = uproot.open(meta[0])
@@ -53,13 +63,13 @@ def load_vtx(meta, vis=False) :
         fig = plt.figure()
         
         # 3D
-        # ax = fig.add_subplot(121, projection='3d')
-        # img = ax.scatter(x, y, z, cmap="Greys", alpha=0.05)
-        # img = ax.scatter(vis_coords[:,0], vis_coords[:,1], vis_coords[:,2], c=vis_ft[:,1], cmap=plt.jet())
+        ax = fig.add_subplot(121, projection='3d')
+        img = ax.scatter(x, y, z, cmap="Greys", alpha=0.05)
+        img = ax.scatter(vis_coords[:,0], vis_coords[:,1], vis_coords[:,2], c=vis_ft[:,1], cmap=plt.jet())
         
         # 2D
-        ax = fig.add_subplot(111)
-        img = ax.scatter(y, z, cmap="Greys", alpha=0.05)
+        ax = fig.add_subplot(122)
+        img = ax.scatter(z, y, cmap="Greys", alpha=0.05)
         img = ax.scatter(vis_coords[:,2], vis_coords[:,1], c=vis_ft[:,1], cmap=plt.jet(), marker='*', alpha=0.5)
         plt.xlabel('Z [cm]')
         plt.ylabel('Y [cm]')
@@ -67,6 +77,28 @@ def load_vtx(meta, vis=False) :
         fig.colorbar(img)
         plt.show()
 
+    # print(coords.shape)
+    # print(ft.shape)
+    return [voxelize(coords), ft]
+
+def gen_sample() :
+
+    min = -100
+    max = -1
+    npoints = 389
+    x = np.linspace(min, max, npoints)
+    y = np.linspace(min, max, npoints)
+    z = np.linspace(min, max, npoints)
+    q = np.ones_like(x)
+    coords = np.stack((x,y,z), axis=1)
+    ft = np.stack((np.ones_like(q),np.ones_like(q),np.ones_like(q),np.ones_like(q)), axis=1)
+    
+    # bias = np.min(coords)
+    # if bias < 0 :
+    #     coords = coords - bias
+    
+    print(coords)
+    print(ft.shape)
     return [coords, ft]
 
 def type_to_color_func(type):

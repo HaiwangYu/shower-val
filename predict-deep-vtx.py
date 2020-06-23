@@ -20,7 +20,7 @@ if use_cuda:
     print("Using CUDA.")
 else:
     print("Not using CUDA.")
-device = 'cpu'
+# device = 'cpu'
 model = DeepVtx(dimension=3, device=device)
 model.train()
 

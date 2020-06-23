@@ -11,7 +11,7 @@ class DeepVtx(nn.Module):
     '''
     spatialSize seems need to be 2^n
     '''
-    def __init__(self,  dimension = 3, device = 'cuda', spatialSize = 64, nIn = 3, nClasses = 1):
+    def __init__(self,  dimension = 3, device = 'cuda', spatialSize = 8192, nIn = 3, nClasses = 1):
         nn.Module.__init__(self)
         self.sparseModel = scn.Sequential().add(
             scn.InputLayer(dimension, torch.LongTensor([spatialSize]*3), mode=4)).add(
