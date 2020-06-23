@@ -7,3 +7,5 @@ examples
 *.swp
 *.csv
 checkpoints
+.ipynb_checkpoints
+Untitled*
