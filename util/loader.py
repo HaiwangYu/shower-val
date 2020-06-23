@@ -1,6 +1,7 @@
 import uproot
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colors
 
 def vtype_encodeing_func(type) :
     if type == 0:
@@ -68,22 +69,49 @@ def load_vtx(meta, vis=False) :
 
     return [coords, ft]
 
-def vis_prediction(coords, prediction, quantile=0.99):
+def type_to_color_func(type):
+    if type == 1:
+        return 'b'
+    elif type == 2:
+        return 'g'
+    elif type == 3:
+        return 'y'
+    return 'k'
+type_to_color = np.vectorize(type_to_color_func)
+
+def vis_prediction(coords, prediction, ref=None, threshold=0.99):
     prediction = prediction.cpu().detach().numpy()[:,0]
-    quantile = (len(prediction)-1.)/len(prediction)
-    quantile_val = np.quantile(prediction, quantile)
-    print('{} @ {}'.format(quantile_val, quantile))
-    vtx_filter = prediction>=quantile_val
+    print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
+    
+    vtx_filter = prediction>threshold
+
+    if ref is not None :
+        ref_filter = ref>0
     
     fig = plt.figure(1)
     
-    ax = fig.add_subplot(121)
-    img = ax.hist(prediction,100)
+    # ax = fig.add_subplot(121)
+    # img = ax.hist(prediction,100)
+    # plt.xlabel('prediction')
     
-    ax = fig.add_subplot(122)
-    img = ax.scatter(coords[:,2], coords[:,1], cmap="Greys", alpha=0.05)
-    img = ax.scatter(coords[0,2], coords[0,1], marker='s', facecolors='none', edgecolors='r')
-    img = ax.scatter(coords[:,2][vtx_filter], coords[:,1][vtx_filter], c=prediction[vtx_filter], cmap=plt.jet(), marker='*', alpha=0.5)
+    ax = fig.add_subplot(111)
+    ax.scatter(coords[:,2], coords[:,1], cmap="Greys", alpha=0.05)
+    ax.scatter(coords[0,2], coords[0,1], marker='s', facecolors='none', edgecolors='r')
+    img = ax.scatter(
+        coords[:,2][vtx_filter],
+        coords[:,1][vtx_filter],
+        c=prediction[vtx_filter],
+        vmin=0.99, vmax=1.0,
+        cmap=plt.jet(),
+        marker='*',
+        alpha=0.5)
+    if ref is not None :
+        ax.scatter(
+            coords[:,2][ref_filter],
+            coords[:,1][ref_filter],
+            facecolors='none',
+            edgecolors=type_to_color(ref[ref_filter]),
+            marker='o')
     plt.xlabel('Z [cm]')
     plt.ylabel('Y [cm]')
     fig.colorbar(img)

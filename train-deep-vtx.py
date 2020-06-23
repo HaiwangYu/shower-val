@@ -30,17 +30,15 @@ optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0
 
 dir_checkpoint = 'checkpoints/'
 max_samples = 100
-nepoch = 10
+nepoch = 5
 start = timer()
 for epoch in range(nepoch):
-    if epoch%10==0 :
-        print('epoch: ', epoch)
+    print('epoch: ', epoch)
     sample = []
     with open('list1.csv') as f:
         reader = csv.reader(f, delimiter=' ')
         isample = 0
         for row in reader:
-            isample = isample + 1
             if isample > max_samples :
                 break
             coords, ft = util.load_vtx(row, vis=False)
@@ -49,11 +47,15 @@ for epoch in range(nepoch):
             # remove the truth from ft
             ft = ft[:,0:-1]
             prediction = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
+            if isample%20 == 0 :
+                print('isample: {}'.format(isample))
+                # util.vis_prediction(coords, prediction)
             loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
             loss.backward()
             optimizer.step()
+            isample = isample + 1
     torch.save(model.state_dict(), dir_checkpoint + 'CP{}.pth'.format(epoch))
 end = timer()
 if nepoch > 0:
-    print('Training time: {0:.1f} ms'.format((end-start)/nepoch*1000))
+    print('time/epoch: {0:.1f} ms'.format((end-start)/nepoch*1000))
 

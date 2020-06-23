@@ -24,11 +24,11 @@ device = 'cpu'
 model = DeepVtx(dimension=3, device=device)
 model.train()
 
-model_path = 'checkpoints/CP0.pth'
+model_path = 'test-s100-e9/CP9.pth'
 model.load_state_dict(torch.load(model_path))
 
-start_sample = 100
-max_sample = 10 + start_sample
+start_sample = 0
+max_sample = 100 + start_sample
 start = timer()
 with open('list1.csv') as f:
     reader = csv.reader(f, delimiter=' ')
@@ -39,13 +39,13 @@ with open('list1.csv') as f:
             continue
         if isample > max_sample :
             break
-        print(row[0])
+        print('isample: {} : {}'.format(isample,row[0]))
         coords, ft = util.load_vtx(row, vis=False)
         # get truth from ft
         truth = torch.FloatTensor(ft[:,-1]).to(device)
         # remove the truth from ft
         ft = ft[:,0:-1]
         prediction = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
-        util.vis_prediction(coords, prediction)
+        util.vis_prediction(coords, prediction,ft[:,2])
 end = timer()
-print('Predict time: {0:.1f} ms'.format((end-start)/1*1000))
+print('time: {0:.1f} ms'.format((end-start)/1*1000))
