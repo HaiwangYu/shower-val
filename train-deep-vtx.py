@@ -14,6 +14,26 @@ from timeit import default_timer as timer
 import csv
 import util
 
+def balance_BCE(criterion, prediction, truth, sig_len = 1):
+    if torch.isnan(prediction).any() or torch.isnan(truth).any() :
+        return None
+    if len(prediction.shape) != 1 or len(truth.shape) != 1 :
+        raise Exception('input needs to have 1 dim')
+    if prediction.shape[0] != truth.shape[0] :
+        raise Exception('input needs to have same length')
+    tot_len = prediction.shape[0]
+    if tot_len < 1 or tot_len < sig_len or sig_len < 0 :
+        raise Exception('length err')
+
+    bkg_len = tot_len - sig_len
+    loss_sig = criterion(prediction[0:sig_len], truth[0:sig_len]) * bkg_len / tot_len
+    loss_bkg = criterion(prediction[sig_len:], truth[sig_len:]) * sig_len / tot_len
+
+    # print(truth.shape[0], ': ', sig_len, ', ', bkg_len)
+    return loss_sig + loss_bkg
+    
+
+
 # Use the GPU if there is one and sparseconvnet can use it, otherwise CPU
 use_cuda = torch.cuda.is_available() and scn.SCN.is_cuda_build()
 device = 'cuda:0' if use_cuda else 'cpu'
@@ -36,7 +56,7 @@ dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.txt','w')
 ntrain = 1000
 nval = 200
-nepoch = 50
+nepoch = 10
 start = timer()
 for epoch in range(nepoch):
 
@@ -63,7 +83,10 @@ for epoch in range(nepoch):
                 sys.stdout.flush()
                 # print('\tisample: {}'.format(isample))
                 # util.vis_prediction(coords, prediction)
-            loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
+            # loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
+            loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
+            if(loss is None) :
+                continue
             train_loss += loss.item()
             loss.backward()
             optimizer.step()
@@ -85,7 +108,10 @@ for epoch in range(nepoch):
             # remove the truth from ft
             ft = ft[:,0:-1]
             prediction = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
-            loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
+            # loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
+            loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
+            if(loss is None) :
+                continue
             val_loss += loss.item()
             isample = isample + 1
     val_loss = val_loss / isample
