@@ -24,7 +24,7 @@ else:
 model = DeepVtx(dimension=3, device=device)
 model.train()
 
-model_path = 'checkpoints/CP49.pth'
+model_path = 'checkpoints/CP9.pth'
 model.load_state_dict(torch.load(model_path))
 
 start_sample = 0

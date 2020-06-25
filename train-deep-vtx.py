@@ -47,7 +47,7 @@ torch.set_num_threads(1)
 
 model = DeepVtx(dimension=3, device=device)
 model.train()
-start_epoch = 0
+start_epoch = 8
 if start_epoch > 0 :
     model.load_state_dict(torch.load('checkpoints/CP{}.pth'.format(start_epoch-1)))
 
@@ -58,9 +58,9 @@ optimizer = optim.SGD(model.parameters(), lr=1e-3, momentum=0.9, weight_decay=0.
 
 dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.txt','a+')
-ntrain = 4000
-nval = 1000
-nepoch = 10
+ntrain = 500
+nval = 100
+nepoch = 50
 start = timer()
 for epoch in range(start_epoch, start_epoch+nepoch):
 

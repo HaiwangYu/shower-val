@@ -1,6 +1,7 @@
 .vscode
 data*
 test*
+fail*
 examples
 */__pycache__
 *log*
