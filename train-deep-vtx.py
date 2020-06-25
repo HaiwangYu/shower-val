@@ -47,34 +47,40 @@ torch.set_num_threads(1)
 
 model = DeepVtx(dimension=3, device=device)
 model.train()
+start_epoch = 0
+if start_epoch > 0 :
+    model.load_state_dict(torch.load('checkpoints/CP{}.pth'.format(start_epoch-1)))
 
-criterion = nn.BCELoss().to(device)
-# criterion = nn.CrossEntropyLoss().to(device)
-optimizer = optim.SGD(model.parameters(), lr=0.1, momentum=0.9, weight_decay=0.0005)
+# criterion = nn.BCELoss().to(device)
+weight = torch.tensor([1, 100], dtype=torch.float32)
+criterion = nn.CrossEntropyLoss(weight=weight).to(device)
+optimizer = optim.SGD(model.parameters(), lr=1e-3, momentum=0.9, weight_decay=0.0005)
 
 dir_checkpoint = 'checkpoints/'
-outfile_loss = open(dir_checkpoint+'/loss.txt','w')
-ntrain = 1000
-nval = 200
+outfile_loss = open(dir_checkpoint+'/loss.txt','a+')
+ntrain = 4000
+nval = 1000
 nepoch = 10
 start = timer()
-for epoch in range(nepoch):
+for epoch in range(start_epoch, start_epoch+nepoch):
 
     # setup toolbar
     toolbar_width = 20
+    epoch_time = timer()
     sys.stdout.write("epoch %d : [%s]" % (epoch, " " * toolbar_width))
     sys.stdout.flush()
     sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
     
     train_loss = 0
     with open('list1-train.csv') as f:
+        optimizer.zero_grad()
         reader = csv.reader(f, delimiter=' ')
         isample = 0
         for row in reader:
             if isample > ntrain :
                 break
             coords, ft = util.load_vtx(row, vis=False)
-            truth = torch.FloatTensor(ft[:,-1]).to(device)
+            truth = torch.LongTensor(ft[:,-1]).to(device)
             # remove the truth from ft
             ft = ft[:,0:-1]
             prediction = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
@@ -84,7 +90,8 @@ for epoch in range(nepoch):
                 # print('\tisample: {}'.format(isample))
                 # util.vis_prediction(coords, prediction)
             # loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
-            loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
+            # loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
+            loss = criterion(prediction,truth)
             if(loss is None) :
                 continue
             train_loss += loss.item()
@@ -104,18 +111,20 @@ for epoch in range(nepoch):
             if isample > nval :
                 break
             coords, ft = util.load_vtx(row, vis=False)
-            truth = torch.FloatTensor(ft[:,-1]).to(device)
+            truth = torch.LongTensor(ft[:,-1]).to(device)
             # remove the truth from ft
             ft = ft[:,0:-1]
             prediction = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
             # loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
-            loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
+            # loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
+            loss = criterion(prediction,truth)
             if(loss is None) :
                 continue
             val_loss += loss.item()
             isample = isample + 1
     val_loss = val_loss / isample
-    print('epoch {} finished - tloss: {:.6f} vloss: {:.6f}'.format(epoch, train_loss, val_loss))
+    epoch_time = timer() - epoch_time
+    print('tloss: {:.6f} vloss: {:.6f} time: {}'.format(train_loss, val_loss, epoch_time))
     print('{}, {:.6f}, {:.6f}'.format(epoch, train_loss, val_loss), file=outfile_loss, flush=True)
 end = timer()
 if nepoch > 0:

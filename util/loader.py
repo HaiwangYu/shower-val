@@ -112,31 +112,43 @@ def type_to_color_func(type):
 type_to_color = np.vectorize(type_to_color_func)
 
 def vis_prediction(coords, prediction, ref=None, threshold=0.99):
-    prediction = prediction.cpu().detach().numpy()[:,0]
     print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
-    
-    vtx_filter = prediction>threshold
+    print(prediction[np.argmax(prediction)])
 
     if ref is not None :
         ref_filter = ref>0
     
     fig = plt.figure(1)
     
-    # ax = fig.add_subplot(121)
-    # img = ax.hist(prediction,100)
-    # plt.xlabel('prediction')
+    ax = fig.add_subplot(121)
+    img = ax.hist(prediction,100)
+    plt.xlabel('prediction')
     
-    ax = fig.add_subplot(111)
+    ax = fig.add_subplot(122)
     ax.scatter(coords[:,2], coords[:,1], cmap="Greys", alpha=0.05)
     ax.scatter(coords[0,2], coords[0,1], marker='s', facecolors='none', edgecolors='r')
+    
+    # draw coords pass threshold
+    # vtx_filter = prediction>threshold
+    # img = ax.scatter(
+    #     coords[:,2][vtx_filter],
+    #     coords[:,1][vtx_filter],
+    #     c=prediction[vtx_filter],
+    #     # vmin=0.99, vmax=1.0,
+    #     cmap=plt.jet(),
+    #     marker='*',
+    #     alpha=0.5)
+    # fig.colorbar(img)
+    
+    # draw the best one
+    idx = np.argmax(prediction)
     img = ax.scatter(
-        coords[:,2][vtx_filter],
-        coords[:,1][vtx_filter],
-        c=prediction[vtx_filter],
-        vmin=0.99, vmax=1.0,
-        cmap=plt.jet(),
+        coords[:,2][idx],
+        coords[:,1][idx],
         marker='*',
-        alpha=0.5)
+        facecolors='y',
+        edgecolors='y')
+    
     if ref is not None :
         ax.scatter(
             coords[:,2][ref_filter],
@@ -144,8 +156,8 @@ def vis_prediction(coords, prediction, ref=None, threshold=0.99):
             facecolors='none',
             edgecolors=type_to_color(ref[ref_filter]),
             marker='o')
+
     plt.xlabel('Z [cm]')
     plt.ylabel('Y [cm]')
-    fig.colorbar(img)
     
     plt.show()
