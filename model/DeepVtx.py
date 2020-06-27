@@ -14,7 +14,7 @@ class DeepVtx(nn.Module):
     def __init__(self,  dimension = 3, device = 'cuda', spatialSize = 1024, nIn = 3, nClasses = 2):
         nn.Module.__init__(self)
         self.sparseModel = scn.Sequential().add(
-            scn.InputLayer(dimension, torch.LongTensor([spatialSize]*3), mode=4)).add(
+            scn.InputLayer(dimension, torch.LongTensor([spatialSize]*3), mode=3)).add(
             scn.SubmanifoldConvolution(dimension, nIn, m, 3, False)).add(
             scn.UNet(dimension, reps, nPlanes, residual_blocks=False, downsample=[2,2])).add(
             scn.BatchNormReLU(m)).add(
