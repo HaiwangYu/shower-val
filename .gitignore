@@ -2,6 +2,7 @@
 data*
 test*
 fail*
+backup
 examples
 */__pycache__
 *log*

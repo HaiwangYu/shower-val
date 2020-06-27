@@ -4,7 +4,7 @@ import torch.nn as nn
 import sparseconvnet as scn
 
 reps = 2 # Conv block repetition factor
-m = 64 # Unet number of features
+m = 16 # Unet number of features
 nPlanes = [m, 2*m, 4*m, 8*m, 16*m] # UNet number of features per level
 
 class DeepVtx(nn.Module):

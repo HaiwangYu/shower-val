@@ -24,13 +24,13 @@ else:
 model = DeepVtx(dimension=3, device=device)
 model.train()
 
-model_path = 'checkpoints/CP9.pth'
+model_path = 'checkpoints/CP80.pth'
 model.load_state_dict(torch.load(model_path))
 
 start_sample = 0
 max_sample = 100 + start_sample
 start = timer()
-with open('list1-train.csv') as f:
+with open('list1-val.csv') as f:
     reader = csv.reader(f, delimiter=' ')
     isample = 0
     for row in reader:
