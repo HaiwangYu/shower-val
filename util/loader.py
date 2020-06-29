@@ -13,17 +13,39 @@ def vtype_encodeing_func(type) :
     return 0
 vtype_encodeing = np.vectorize(vtype_encodeing_func)
 
-def voxelize(coords) :
-    if len(coords.shape) != 2:
-        raise Exception('coords should have 2 dims')
+def voxelize(x, y, res=1.) :
+    if len(x.shape) != 2:
+        raise Exception('x should have 2 dims')
     
     # all voxel indices needs to be non-negative
-    for i in range(coords.shape[1]) :
-        coords[:,i] = coords[:,i] - np.min(coords[:,i])
+    for i in range(x.shape[1]) :
+        x[:,i] = x[:,i] - np.min(x[:,i])
     
-    return coords
+    # in unit of resolution
+    x = x/res
+    
+    # digitize
+    x = x.astype(int)
+    
+    # filling histogram
+    d = dict()
+    for idx in range(x.shape[0]) :
+        key = tuple(x[idx,])
+        if key in d :
+            d[key][0] = d[key][0] + y[idx,][0]
+            d[key][1:] = np.maximum(d[key][1:],y[idx,][1:])
+        else :
+            d[key] = y[idx,]
+    
+    keys = []
+    vals = []
+    for key in d :
+        keys.append(list(key))
+        vals.append(list(d[key]))
+    
+    return np.array(keys), np.array(vals)
 
-def load_vtx(meta, vis=False) :
+def load_vtx(meta, vis=False, vox = True) :
 
     root_file = uproot.open(meta[0])
     tblob = root_file['T_rec_charge_blob']
@@ -53,33 +75,45 @@ def load_vtx(meta, vis=False) :
     tvtx_coords = np.stack((tvx,tvy,tvz), axis=1)
     tvtx_ft = np.stack((np.zeros_like(tvx),np.zeros_like(tvx),np.zeros_like(tvx),np.ones_like(tvx)), axis=1)
 
-    coords = np.concatenate((tvtx_coords, vtx_coords, blob_coords), axis=0)
-    ft = np.concatenate((tvtx_ft, vtx_ft, blob_ft), axis=0)
+    coords = np.concatenate((vtx_coords, blob_coords, tvtx_coords), axis=0)
+    ft = np.concatenate((vtx_ft, blob_ft, tvtx_ft), axis=0)
+    
+    if vox :
+        vox_coords, vox_ft = voxelize(coords, ft)
+    else :
+        return coords, ft
 
     # input visualize
     if vis:
-        vis_coords = coords[0:len(vtype)+1,]
-        vis_ft = ft[0:len(vtype)+1,]
         fig = plt.figure()
         
-        # 3D
-        ax = fig.add_subplot(121, projection='3d')
-        img = ax.scatter(x, y, z, cmap="Greys", alpha=0.05)
-        img = ax.scatter(vis_coords[:,0], vis_coords[:,1], vis_coords[:,2], c=vis_ft[:,1], cmap=plt.jet())
-        
         # 2D
-        ax = fig.add_subplot(122)
-        img = ax.scatter(z, y, cmap="Greys", alpha=0.05)
-        img = ax.scatter(vis_coords[:,2], vis_coords[:,1], c=vis_ft[:,1], cmap=plt.jet(), marker='*', alpha=0.5)
+        ax = fig.add_subplot(121)
+        charge_filter = ft[:,0] > 0
+        img = ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,0], cmap="jet", alpha=0.1)
+        cand_filter = ft[:,1] > 0
+        img = ax.scatter(coords[cand_filter,2], coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
+        truth_fiter = ft[:,3] > 0
+        img = ax.scatter(coords[truth_fiter,2], coords[truth_fiter,1], marker='s', facecolors='none', edgecolors='r')
         plt.xlabel('Z [cm]')
         plt.ylabel('Y [cm]')
+        plt.grid()
         
-        fig.colorbar(img)
+        # after voxelize
+        ax = fig.add_subplot(122)
+        charge_filter = vox_ft[:,0] > 0
+        img = ax.scatter(vox_coords[charge_filter,2], vox_coords[charge_filter,1], c=vox_ft[charge_filter,0], cmap="jet", alpha=0.1)
+        cand_filter = vox_ft[:,1] > 0
+        img = ax.scatter(vox_coords[cand_filter,2], vox_coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
+        truth_fiter = vox_ft[:,3] > 0
+        img = ax.scatter(vox_coords[truth_fiter,2], vox_coords[truth_fiter,1], marker='s', facecolors='none', edgecolors='r')
+        plt.xlabel('Z [cm]')
+        plt.ylabel('Y [cm]')
+        plt.grid()
+        
         plt.show()
 
-    # print(coords.shape)
-    # print(ft.shape)
-    return [voxelize(coords), ft]
+    return vox_coords, vox_ft
 
 def gen_sample() :
 
@@ -111,12 +145,8 @@ def type_to_color_func(type):
     return 'k'
 type_to_color = np.vectorize(type_to_color_func)
 
-def vis_prediction(coords, prediction, ref=None, threshold=0.99):
+def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
     print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
-    print(prediction[np.argmax(prediction)])
-
-    if ref is not None :
-        ref_filter = ref>0
     
     fig = plt.figure(1)
     
@@ -125,8 +155,12 @@ def vis_prediction(coords, prediction, ref=None, threshold=0.99):
     plt.xlabel('prediction')
     
     ax = fig.add_subplot(122)
-    ax.scatter(coords[:,2], coords[:,1], cmap="Greys", alpha=0.05)
-    ax.scatter(coords[0,2], coords[0,1], marker='s', facecolors='none', edgecolors='r')
+    # ax.scatter(coords[:,2], coords[:,1], cmap="Greys", alpha=0.05)
+    charge_filter = ft[:,0] > 0
+    ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,0], cmap="jet", alpha=0.1)
+    
+    truth_idx = np.argmax(truth)
+    ax.scatter(coords[truth_idx,2], coords[truth_idx,1], marker='s', facecolors='none', edgecolors='r')
     
     # draw coords pass threshold
     # vtx_filter = prediction>threshold
@@ -140,15 +174,22 @@ def vis_prediction(coords, prediction, ref=None, threshold=0.99):
     #     alpha=0.5)
     # fig.colorbar(img)
     
-    # draw the best one
-    idx = np.argmax(prediction)
+    # draw the best prediction
+    pred_idx = np.argmax(prediction)
+    pred_idx = prediction >= prediction[np.argmax(prediction)]
+    match  = 'False'
+    if pred_idx[truth_idx] == True :
+        match = 'True'
+    print('{} points pass prob {} match: {}'.format(np.count_nonzero(pred_idx), prediction[np.argmax(prediction)], match))
     img = ax.scatter(
-        coords[:,2][idx],
-        coords[:,1][idx],
+        coords[pred_idx,2],
+        coords[pred_idx,1],
         marker='*',
         facecolors='y',
         edgecolors='y')
     
+    if ref is not None :
+        ref_filter = ref>0
     if ref is not None :
         ax.scatter(
             coords[:,2][ref_filter],

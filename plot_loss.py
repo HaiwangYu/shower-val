@@ -2,16 +2,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 inputs   = [
-    # 'test-m16-l4-lr0.0001-adam-t500v100-e35/loss.txt',
-    # 'test-m16-l4-lr0.0001-adam-t1000v100-e27/loss.txt',
-    # 'test-m16-l4-lr0.0001-0.00001-adam-t4000v1000-e77/loss.txt',
-    'checkpoints/loss.txt',
+    # 'backup/point-based/test-m16-l4-lr0.0001-0.00001-adam-t4000v1000-e77/loss.txt',
+    'm16-l5-lr5-t4000v1000/loss.txt',
+    'checkpoints/loss.csv',
     ]
 in_labels = [
-    # 't500v100',
-    # 't1000v100',
-    # 't4000',
-    'lr1e-5',
+    'ref',
+    'test'
     ]
 col_labels = [
     'Train',

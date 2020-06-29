@@ -24,13 +24,13 @@ else:
 model = DeepVtx(dimension=3, device=device)
 model.train()
 
-model_path = 'checkpoints/CP80.pth'
+model_path = 'checkpoints/CP39.pth'
 model.load_state_dict(torch.load(model_path))
 
 start_sample = 0
 max_sample = 100 + start_sample
 start = timer()
-with open('list1-val.csv') as f:
+with open('list1-train.csv') as f:
     reader = csv.reader(f, delimiter=' ')
     isample = 0
     for row in reader:
@@ -40,16 +40,16 @@ with open('list1-val.csv') as f:
         if isample > max_sample :
             break
         print('isample: {} : {}'.format(isample,row[0]))
-        coords, ft = util.load_vtx(row, vis=False)
-        # get truth from ft
-        truth = torch.FloatTensor(ft[:,-1]).to(device)
-        # remove the truth from ft
-        ft = ft[:,0:-1]
-        prediction = model([torch.LongTensor(coords),torch.FloatTensor(ft).to(device)])
+        
+        coords_np, ft_np = util.load_vtx(row, vis=False)
+        coords = torch.LongTensor(coords_np)
+        truth = torch.LongTensor(ft_np[:,-1]).to(device)
+        ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
+        prediction = model([coords,ft])
+        
         pred_np = prediction.cpu().detach().numpy()
         pred_np = pred_np[:,1] - pred_np[:,0]
-        # if np.count_nonzero(pred_np>0.9) <= 0: continue
-        util.vis_prediction(coords, pred_np, ft[:,2], -0.1)
-        # util.vis_prediction(coords, ft[:,2], ft[:,1], 0.99)
+        truth_np = truth.cpu().detach().numpy()
+        util.vis_prediction(coords_np, ft_np, pred_np, truth_np, ref=ft_np[:,2], threshold=0)
 end = timer()
 print('time: {0:.1f} ms'.format((end-start)/1*1000))
