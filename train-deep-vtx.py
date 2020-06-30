@@ -10,6 +10,8 @@ from model import ResNet
 from model import DeepVtx
 
 import sys
+import math
+import re
 from timeit import default_timer as timer
 import csv
 import util
@@ -31,7 +33,13 @@ def balance_BCE(criterion, prediction, truth, sig_len = 1):
 
     # print(truth.shape[0], ': ', sig_len, ', ', bkg_len)
     return loss_sig + loss_bkg
-    
+
+
+def scheduler_exp(optimizer, lr0, gamma, epoch):
+    lr = lr0*math.exp(-gamma*epoch)
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
+    return optimizer
 
 
 # Use the GPU if there is one and sparseconvnet can use it, otherwise CPU
@@ -47,42 +55,44 @@ else:
 
 model = DeepVtx(dimension=3, device=device)
 model.train()
-start_epoch = 40
+start_epoch = 0
 if start_epoch > 0 :
     model.load_state_dict(torch.load('checkpoints/CP{}.pth'.format(start_epoch-1)))
 
-w = 400
-lr = 1e-5
+w = 100
+lr0 = 1e-4
+lr_decay = 0.1
 # criterion = nn.BCELoss().to(device)
 weight = torch.tensor([1, w], dtype=torch.float32)
 criterion = nn.CrossEntropyLoss(weight=weight).to(device)
-# optimizer = optim.SGD(model.parameters(), lr=lr, momentum=0.9, weight_decay=0.0005)
-optimizer = optim.Adam(model.parameters(), lr=lr)
+# optimizer = optim.SGD(model.parameters(), lr=lr0, momentum=0.9, weight_decay=0.0005)
+optimizer = optim.Adam(model.parameters(), lr=lr0)
 
 dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.csv','a+')
 outfile_log  = open(dir_checkpoint+'/log','a+')
-ntrain = 1000
-nval = 250
-nepoch = 50
+ntrain = 500
+nval = 150
+nepoch = 100
 
-print('lr: {} weight: {} start: {} ntrain: {} nval: {} device: {}'.format(
-    lr, w, start_epoch, ntrain, nval, device
+print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {}'.format(
+    lr0, lr_decay, w, start_epoch, ntrain, nval, device
 ), file=outfile_log, flush=True)
 
 start = timer()
 for epoch in range(start_epoch, start_epoch+nepoch):
+    optimizer = scheduler_exp(optimizer, lr0, lr_decay, epoch)
 
     # setup toolbar
     toolbar_width = 50
     epoch_time = timer()
-    sys.stdout.write("epoch %d : [%s]" % (epoch, " " * toolbar_width))
+    sys.stdout.write("train %d : [%s]" % (epoch, " " * toolbar_width))
     sys.stdout.flush()
     sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
     
     epoch_loss = 0
     epoch_crt = np.zeros([2,2,2])
-    hit = 0
+    epoch_pur = 0; epoch_eff = 0
     with open('list1-train.csv') as f:
         optimizer.zero_grad()
         reader = csv.reader(f, delimiter=' ')
@@ -110,7 +120,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
             truth = torch.LongTensor(ft_np[:,-1]).to(device)
             ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
 
-            prediction = model([coords,ft])
+            prediction = model([coords,ft[:,0:1]])
             
             # debug section
             # input = model.inputLayer([torch.LongTensor(coords_np),torch.FloatTensor(ft_np).to(device)])
@@ -137,8 +147,13 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 r = 1
             if vtx_id_truth == np.argmax(pred_np):
                 t = 1
-                hit = hit + 1
             epoch_crt[c,r,t] = epoch_crt[c,r,t] + 1
+
+            # pred_cand = pred_np >= pred_np[np.argmax(pred_np)]
+            pred_cand = pred_np > 0
+            if pred_cand[vtx_id_truth] == True :
+                epoch_eff = epoch_eff + 1
+                epoch_pur = epoch_pur + 1./np.count_nonzero(pred_cand)
             
             # if ntry == 1:
             #     print(coords_np[coords_np[:,0]==93])
@@ -157,22 +172,33 @@ for epoch in range(start_epoch, start_epoch+nepoch):
 
             npass = npass + 1
 
+    sys.stdout.write("]\n")
+
     torch.save(model.state_dict(), dir_checkpoint + 'CP{}.pth'.format(epoch))
 
     train_loss = 0
     train_hits = 0
+    train_pur = 0
+    train_eff = 0
     if npass > 0 :
         train_loss = epoch_loss / npass
-        # train_hits = np.sum(epoch_crt[:,:,1]) / npass
-        train_hits = hit / npass
-
-    sys.stdout.write("]\n")
-    print(epoch_crt)
-    print('train: ntry: {} npass: {} vq=0: {}'.format(ntry, npass, nfail[0]))
+        train_hits = np.sum(epoch_crt[:,:,1]) / npass
+        train_eff = epoch_eff / npass
+        train_pur = epoch_pur / npass
+    
+    if epoch == start_epoch :
+        print('train: ntry: {} npass: {} vq=0: {}'.format(ntry, npass, nfail[0]), file=outfile_log, flush=True)
+    print('epoch: {}'.format(epoch), file=outfile_log, flush=True)
+    print(epoch_crt, file=outfile_log, flush=True)
     
     # validation
+    sys.stdout.write("val   %d : [%s]" % (epoch, " " * toolbar_width))
+    sys.stdout.flush()
+    sys.stdout.write("\b" * (toolbar_width+1)) # return to start of line, after '['
+    
     epoch_loss = 0
     epoch_crt = np.zeros([2,2,2])
+    epoch_pur = 0; epoch_eff = 0
     with open('list1-val.csv') as f:
         reader = csv.reader(f, delimiter=' ')
         ntry = 0
@@ -182,6 +208,9 @@ for epoch in range(start_epoch, start_epoch+nepoch):
             ntry = ntry + 1
             if ntry > nval :
                 break
+            if ntry%(nval/toolbar_width) == 0 :
+                sys.stdout.write("=")
+                sys.stdout.flush()
             
             coords_np, ft_np = util.load_vtx(row, vis=False)
             
@@ -195,7 +224,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
             truth = torch.LongTensor(ft_np[:,-1]).to(device)
             ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
 
-            prediction = model([coords,ft])
+            prediction = model([coords,ft[:,0:1]])
             
             pred_np = prediction.cpu().detach().numpy()
             pred_np = pred_np[:,1] - pred_np[:,0]
@@ -211,6 +240,12 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 t = 1
             epoch_crt[c,r,t] = epoch_crt[c,r,t] + 1
 
+            # pred_cand = pred_np >= pred_np[np.argmax(pred_np)]
+            pred_cand = pred_np > 0
+            if pred_cand[vtx_id_truth] == True :
+                epoch_eff = epoch_eff + 1
+                epoch_pur = epoch_pur + 1./np.count_nonzero(pred_cand)
+
             # loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
             # loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
             loss = criterion(prediction,truth)
@@ -221,16 +256,31 @@ for epoch in range(start_epoch, start_epoch+nepoch):
 
     val_loss = 0
     val_hits = 0
+    val_pur = 0
+    val_eff = 0
     if npass > 0 :
         val_loss = epoch_loss / npass
         val_hits = np.sum(epoch_crt[:,:,1]) / npass
+        val_eff = epoch_eff / npass
+        val_pur = epoch_pur / npass
 
+    sys.stdout.write("]\n")
+    
     epoch_time = timer() - epoch_time
     
-    print(epoch_crt)
-    print('val: ntry: {} npass: {} vq=0: {}'.format(ntry, npass, nfail[0]))
-    print('tloss: {:.6f} vloss: {:.6f} thits: {:.6f} vhits: {:.6f} time: {:.6f}'.format(train_loss, val_loss, train_hits, val_hits, epoch_time))
-    print('{}, {:.6f}, {:.6f}, {:.6f}, {:.6f}'.format(epoch, train_loss, val_loss, train_hits, val_hits), file=outfile_loss, flush=True)
+    if epoch == start_epoch :
+        print('train: ntry: {} npass: {} vq=0: {}'.format(ntry, npass, nfail[0]), file=outfile_log, flush=True)
+    print('epoch: {}'.format(epoch), file=outfile_log, flush=True)
+    print(epoch_crt, file=outfile_log, flush=True)
+    
+    metrics = '{}, '.format(epoch)
+    metrics += 'loss: {:.6f}, {:.6f}, '.format(train_loss, val_loss)
+    metrics += 'hit: {:.6f}, {:.6f}, '.format(train_hits, val_hits)
+    metrics += 'eff: {:.6f}, {:.6f}, '.format(train_eff, val_eff)
+    metrics += 'pur: {:.6f}, {:.6f}, '.format(train_pur, val_pur)
+    metrics += 'time: {:.6f}, '.format(epoch_time)
+    print(metrics)
+    print(re.sub(r'[a-z]*: ', r'', metrics), file=outfile_loss, flush=True)
 end = timer()
 if nepoch > 0:
     print('time/epoch: {0:.1f} ms'.format((end-start)/nepoch*1000))

@@ -24,11 +24,11 @@ else:
 model = DeepVtx(dimension=3, device=device)
 model.train()
 
-model_path = 'checkpoints/CP39.pth'
+model_path = 'checkpoints/CP49.pth'
 model.load_state_dict(torch.load(model_path))
 
 start_sample = 0
-max_sample = 100 + start_sample
+max_sample = 200 + start_sample
 start = timer()
 with open('list1-train.csv') as f:
     reader = csv.reader(f, delimiter=' ')
@@ -45,7 +45,7 @@ with open('list1-train.csv') as f:
         coords = torch.LongTensor(coords_np)
         truth = torch.LongTensor(ft_np[:,-1]).to(device)
         ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
-        prediction = model([coords,ft])
+        prediction = model([coords,ft[:,0:1]])
         
         pred_np = prediction.cpu().detach().numpy()
         pred_np = pred_np[:,1] - pred_np[:,0]

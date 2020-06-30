@@ -29,19 +29,23 @@ def voxelize(x, y, res=1.) :
     
     # filling histogram
     d = dict()
+    w = dict()
     for idx in range(x.shape[0]) :
         key = tuple(x[idx,])
         if key in d :
             d[key][0] = d[key][0] + y[idx,][0]
+            w[key][0] = w[key][0] + 1
             d[key][1:] = np.maximum(d[key][1:],y[idx,][1:])
+            w[key][1:] = np.ones_like(y[idx,][1:])
         else :
             d[key] = y[idx,]
+            w[key] = np.ones_like(y[idx,])
     
     keys = []
     vals = []
     for key in d :
         keys.append(list(key))
-        vals.append(list(d[key]))
+        vals.append(list(d[key]/w[key]))
     
     return np.array(keys), np.array(vals)
 
@@ -146,7 +150,23 @@ def type_to_color_func(type):
 type_to_color = np.vectorize(type_to_color_func)
 
 def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
-    print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
+    # print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
+
+    if ft[np.argmax(ft[:,-1]), 0] <= 0 :
+        print('no charge for vtx, skip')
+        return
+
+    truth_idx = np.argmax(truth)
+    pred_idx = np.argmax(prediction)
+    pred_idx = prediction >= prediction[np.argmax(prediction)]
+    match  = 'False'
+    if pred_idx[truth_idx] == True :
+        match = 'True'
+    print('{} points pass prob {} match: {}'.format(np.count_nonzero(pred_idx), prediction[np.argmax(prediction)], match))
+    
+    if match == 'True' :
+        plt.close()
+        return
     
     fig = plt.figure(1)
     
@@ -159,7 +179,6 @@ def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
     charge_filter = ft[:,0] > 0
     ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,0], cmap="jet", alpha=0.1)
     
-    truth_idx = np.argmax(truth)
     ax.scatter(coords[truth_idx,2], coords[truth_idx,1], marker='s', facecolors='none', edgecolors='r')
     
     # draw coords pass threshold
@@ -173,20 +192,13 @@ def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
     #     marker='*',
     #     alpha=0.5)
     # fig.colorbar(img)
-    
-    # draw the best prediction
-    pred_idx = np.argmax(prediction)
-    pred_idx = prediction >= prediction[np.argmax(prediction)]
-    match  = 'False'
-    if pred_idx[truth_idx] == True :
-        match = 'True'
-    print('{} points pass prob {} match: {}'.format(np.count_nonzero(pred_idx), prediction[np.argmax(prediction)], match))
+
     img = ax.scatter(
         coords[pred_idx,2],
         coords[pred_idx,1],
-        marker='*',
-        facecolors='y',
-        edgecolors='y')
+        marker='^',
+        facecolors='none',
+        edgecolors='r')
     
     if ref is not None :
         ref_filter = ref>0
@@ -194,11 +206,13 @@ def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
         ax.scatter(
             coords[:,2][ref_filter],
             coords[:,1][ref_filter],
-            facecolors='none',
-            edgecolors=type_to_color(ref[ref_filter]),
-            marker='o')
+            facecolors='r',
+            edgecolors='none',
+            # edgecolors=type_to_color(ref[ref_filter]),
+            marker='+')
 
     plt.xlabel('Z [cm]')
     plt.ylabel('Y [cm]')
     
     plt.show()
+    plt.close()
