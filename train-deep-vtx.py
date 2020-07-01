@@ -60,8 +60,8 @@ if start_epoch > 0 :
     model.load_state_dict(torch.load('checkpoints/CP{}.pth'.format(start_epoch-1)))
 
 w = 100
-lr0 = 1e-4
-lr_decay = 0.1
+lr0 = 1e-5
+lr_decay = 0.05
 # criterion = nn.BCELoss().to(device)
 weight = torch.tensor([1, w], dtype=torch.float32)
 criterion = nn.CrossEntropyLoss(weight=weight).to(device)
@@ -71,8 +71,8 @@ optimizer = optim.Adam(model.parameters(), lr=lr0)
 dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.csv','a+')
 outfile_log  = open(dir_checkpoint+'/log','a+')
-ntrain = 500
-nval = 150
+ntrain = 4000
+nval = 1000
 nepoch = 100
 
 print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {}'.format(

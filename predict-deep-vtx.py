@@ -24,15 +24,16 @@ else:
 model = DeepVtx(dimension=3, device=device)
 model.train()
 
-model_path = 'checkpoints/CP49.pth'
+model_path = 'checkpoints/CP80.pth'
 model.load_state_dict(torch.load(model_path))
 
 start_sample = 0
-max_sample = 200 + start_sample
+max_sample = 1000 + start_sample
 start = timer()
 with open('list1-train.csv') as f:
     reader = csv.reader(f, delimiter=' ')
     isample = 0
+    stat = {}
     for row in reader:
         isample = isample + 1
         if isample < start_sample :
@@ -50,6 +51,12 @@ with open('list1-train.csv') as f:
         pred_np = prediction.cpu().detach().numpy()
         pred_np = pred_np[:,1] - pred_np[:,0]
         truth_np = truth.cpu().detach().numpy()
-        util.vis_prediction(coords_np, ft_np, pred_np, truth_np, ref=ft_np[:,2], threshold=0)
+        key = util.vis_prediction(coords_np, ft_np, pred_np, truth_np, ref=ft_np[:,2], threshold=0)
+        if key in stat :
+            stat[key] += 1
+        else :
+            stat[key] = 1
+    for key in stat :
+        print(key, ': ', stat[key])
 end = timer()
 print('time: {0:.1f} ms'.format((end-start)/1*1000))

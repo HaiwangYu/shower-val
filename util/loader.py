@@ -154,19 +154,25 @@ def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
 
     if ft[np.argmax(ft[:,-1]), 0] <= 0 :
         print('no charge for vtx, skip')
-        return
+        return 'Skip'
 
     truth_idx = np.argmax(truth)
     pred_idx = np.argmax(prediction)
     pred_idx = prediction >= prediction[np.argmax(prediction)]
-    match  = 'False'
-    if pred_idx[truth_idx] == True :
-        match = 'True'
-    print('{} points pass prob {} match: {}'.format(np.count_nonzero(pred_idx), prediction[np.argmax(prediction)], match))
     
-    if match == 'True' :
+    match  = 'Miss'
+    for pred_coords in coords[pred_idx] :
+        d = np.linalg.norm(pred_coords - coords[truth_idx])
+        if d <= 2 :
+            match = 'Loose'
+        print(pred_coords, coords[truth_idx], d)
+    if pred_idx[truth_idx] == True :
+        match = 'Exact'
+    print('{} points pass prob {} match: {}'.format(np.count_nonzero(pred_idx), prediction[np.argmax(prediction)], match))
+    return match
+    if match != 'Miss' :
         plt.close()
-        return
+        return match
     
     fig = plt.figure(1)
     

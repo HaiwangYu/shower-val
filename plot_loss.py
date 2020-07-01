@@ -2,13 +2,20 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 inputs   = [
-    # 'backup/point-based/test-m16-l4-lr0.0001-0.00001-adam-t4000v1000-e77/loss.txt',
+    # 'm16-l5-lr5-t4000v1000/loss.csv',
+    # 'm16-l5-lr4-t1000/loss.csv',
+    # 'm16-l5-lr4-t200/loss.csv',
+    # 'm16-l4-q-t200/loss.csv',
     # 'm16-l4-q-avg-t200/loss.csv',
-    'checkpoints/loss.csv',
+    'checkpoints//loss.csv',
     ]
 in_labels = [
-    # 'ref',
-    'test'
+    # '4000, 5',
+    # '1000, 4',
+    # '200, 4',
+    # '200, 4, q',
+    # '200, 4, q-avg',
+    'test',
     ]
 col_labels = [
     'epoch', # 0
@@ -50,9 +57,9 @@ ax = plt.subplot(122)
 ax.set_title('hit rate')
 for input, in_lable in zip(inputs, in_labels) :
     data = np.genfromtxt(input, delimiter=',')
-    for icol in range(3, 9) :
+    for icol in [3, 4, 7, 8] :
         plt.plot(data[:,0], data[:,icol], col_symbol[icol], label='{}:{}'.format(in_lable, col_labels[icol]))
-# plt.legend(loc='best',fontsize=fontsize)
+plt.legend(loc='best',fontsize=fontsize)
 plt.grid()
 plt.ylim(0,1)
 plt.xlabel("Epoch", fontsize=fontsize)
