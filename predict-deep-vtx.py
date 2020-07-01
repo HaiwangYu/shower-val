@@ -42,7 +42,7 @@ with open('list1-train.csv') as f:
             break
         print('isample: {} : {}'.format(isample,row[0]))
         
-        coords_np, ft_np = util.load_vtx(row, vis=False)
+        coords_np, ft_np = util.load(row, vis=False)
         coords = torch.LongTensor(coords_np)
         truth = torch.LongTensor(ft_np[:,-1]).to(device)
         ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)

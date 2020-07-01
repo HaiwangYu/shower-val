@@ -51,7 +51,7 @@ device = 'cuda:0' if use_cuda else 'cpu'
 if use_cuda:
     print("Using CUDA.")
 else:
-    print("Not using CUDA.")
+    print("Using CPU.")
 
 model = DeepVtx(dimension=3, device=device)
 model.train()
@@ -71,9 +71,10 @@ optimizer = optim.Adam(model.parameters(), lr=lr0)
 dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.csv','a+')
 outfile_log  = open(dir_checkpoint+'/log','a+')
-ntrain = 4000
-nval = 1000
-nepoch = 100
+ntrain = 500
+nval = 100
+nepoch = 10
+batch_size = 1
 
 print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {}'.format(
     lr0, lr_decay, w, start_epoch, ntrain, nval, device
@@ -93,6 +94,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     epoch_loss = 0
     epoch_crt = np.zeros([2,2,2])
     epoch_pur = 0; epoch_eff = 0
+    batch_list = []
     with open('list1-train.csv') as f:
         optimizer.zero_grad()
         reader = csv.reader(f, delimiter=' ')
@@ -107,7 +109,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load_vtx(row, vis=False)
+            coords_np, ft_np = util.load(row, vis=False)
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1
@@ -115,6 +117,13 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 #     print('no charge for {}'.format(ntry))
                 #     util.load_vtx(row, vis=True)
                 continue
+            
+            # mini-batch
+            # if len(batch_list) < batch_size :
+            #     batch_list.append(row)
+            #     continue
+            # else :
+            #     coords_np, ft_np = util.batch_load(batch_list)
             
             coords = torch.LongTensor(coords_np)
             truth = torch.LongTensor(ft_np[:,-1]).to(device)
@@ -212,7 +221,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load_vtx(row, vis=False)
+            coords_np, ft_np = util.load(row, vis=False)
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1

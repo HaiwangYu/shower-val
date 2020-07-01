@@ -49,7 +49,28 @@ def voxelize(x, y, res=1.) :
     
     return np.array(keys), np.array(vals)
 
-def load_vtx(meta, vis=False, vox = True) :
+def batch_load(list) :
+    coords = []
+    fts = []
+    for i, meta in enumerate(list) :
+        coord, ft = load(meta, vis=False, vox=True)
+        batch_id = np.ones((coord.shape[0],1))*i
+        coord = np.concatenate((coord, batch_id), axis=1)
+        coords.append(coord)
+        fts.append(ft)
+        # print('coord: ', coord[0:5,])
+        # print('ft: ', ft[0:5,])
+    
+    coords = np.concatenate(coords, axis=0)
+    fts = np.concatenate(fts, axis=0)
+    # print('coords: ', coords[0:5,])
+    # print('fts: ', fts[0:5,])
+
+    return coords, fts
+
+
+
+def load(meta, vis=False, vox = True) :
 
     root_file = uproot.open(meta[0])
     tblob = root_file['T_rec_charge_blob']
