@@ -70,7 +70,7 @@ def batch_load(list) :
 
 
 
-def load(meta, vis=False, vox = True) :
+def load(meta, vis=False, vox = True, res = 1.) :
 
     root_file = uproot.open(meta[0])
     tblob = root_file['T_rec_charge_blob']
@@ -104,7 +104,7 @@ def load(meta, vis=False, vox = True) :
     ft = np.concatenate((vtx_ft, blob_ft, tvtx_ft), axis=0)
     
     if vox :
-        vox_coords, vox_ft = voxelize(coords, ft)
+        vox_coords, vox_ft = voxelize(coords, ft, res)
     else :
         return coords, ft
 
@@ -170,7 +170,7 @@ def type_to_color_func(type):
     return 'k'
 type_to_color = np.vectorize(type_to_color_func)
 
-def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
+def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0, vis=True):
     # print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
 
     if ft[np.argmax(ft[:,-1]), 0] <= 0 :
@@ -190,10 +190,12 @@ def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0.99):
     if pred_idx[truth_idx] == True :
         match = 'Exact'
     print('{} points pass prob {} match: {}'.format(np.count_nonzero(pred_idx), prediction[np.argmax(prediction)], match))
-    return match
-    if match != 'Miss' :
-        plt.close()
+    
+    if not vis :
         return match
+        if match != 'Miss' :
+            plt.close()
+            return match
     
     fig = plt.figure(1)
     

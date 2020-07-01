@@ -24,13 +24,14 @@ else:
 model = DeepVtx(dimension=3, device=device)
 model.train()
 
-model_path = 'checkpoints/CP80.pth'
+model_path = 'checkpoints/CP19.pth'
 model.load_state_dict(torch.load(model_path))
 
 start_sample = 0
 max_sample = 1000 + start_sample
+resolution = 2.0
 start = timer()
-with open('list1-train.csv') as f:
+with open('list1-val.csv') as f:
     reader = csv.reader(f, delimiter=' ')
     isample = 0
     stat = {}
@@ -42,7 +43,7 @@ with open('list1-train.csv') as f:
             break
         print('isample: {} : {}'.format(isample,row[0]))
         
-        coords_np, ft_np = util.load(row, vis=False)
+        coords_np, ft_np = util.load(row, vis=False, res=resolution)
         coords = torch.LongTensor(coords_np)
         truth = torch.LongTensor(ft_np[:,-1]).to(device)
         ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)

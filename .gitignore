@@ -9,6 +9,7 @@ examples
 *.swp
 *.csv
 m*-l*
+t*-res*
 checkpoints
 .ipynb_checkpoints
 Untitled*

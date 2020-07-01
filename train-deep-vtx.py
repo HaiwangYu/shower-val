@@ -71,10 +71,11 @@ optimizer = optim.Adam(model.parameters(), lr=lr0)
 dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.csv','a+')
 outfile_log  = open(dir_checkpoint+'/log','a+')
-ntrain = 500
-nval = 100
-nepoch = 10
-batch_size = 1
+ntrain = 1000
+nval = 250
+nepoch = 50
+# batch_size = 1
+resolution = 2.0
 
 print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {}'.format(
     lr0, lr_decay, w, start_epoch, ntrain, nval, device
@@ -93,7 +94,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     
     epoch_loss = 0
     epoch_crt = np.zeros([2,2,2])
-    epoch_pur = 0; epoch_eff = 0
+    epoch_pur = 0; epoch_eff = 0; epoch_loose = 0
     batch_list = []
     with open('list1-train.csv') as f:
         optimizer.zero_grad()
@@ -109,7 +110,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load(row, vis=False)
+            coords_np, ft_np = util.load(row, vis=False, res=resolution)
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1
@@ -147,22 +148,26 @@ for epoch in range(start_epoch, start_epoch+nepoch):
             # class 1 - class 0 and exclude the 1st point
             pred_np = pred_np[:,1] - pred_np[:,0]
             truth_np = truth.cpu().detach().numpy()
-            vtx_id_truth = np.argmax(truth_np)
+            truth_idx = np.argmax(truth_np)
+            pred_idx = np.argmax(pred_np)
             
             c = 0; r = 0; t = 0
-            if ft[vtx_id_truth,1] > 0 :
+            if ft[truth_idx,1] > 0 :
                 c = 1
-            if ft[vtx_id_truth,2] > 0 :
+            if ft[truth_idx,2] > 0 :
                 r = 1
-            if vtx_id_truth == np.argmax(pred_np):
+            if truth_idx == pred_idx:
                 t = 1
-            epoch_crt[c,r,t] = epoch_crt[c,r,t] + 1
+            epoch_crt[c,r,t] += 1
 
             # pred_cand = pred_np >= pred_np[np.argmax(pred_np)]
             pred_cand = pred_np > 0
-            if pred_cand[vtx_id_truth] == True :
-                epoch_eff = epoch_eff + 1
-                epoch_pur = epoch_pur + 1./np.count_nonzero(pred_cand)
+            if pred_cand[truth_idx] == True :
+                epoch_eff += 1
+                epoch_pur += 1./np.count_nonzero(pred_cand)
+            d = np.linalg.norm(coords[pred_idx,:] - coords[truth_idx,:])
+            if d*resolution <= 1.0 :
+                epoch_loose += 1
             
             # if ntry == 1:
             #     print(coords_np[coords_np[:,0]==93])
@@ -189,11 +194,13 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     train_hits = 0
     train_pur = 0
     train_eff = 0
+    train_loose = 0
     if npass > 0 :
         train_loss = epoch_loss / npass
         train_hits = np.sum(epoch_crt[:,:,1]) / npass
         train_eff = epoch_eff / npass
         train_pur = epoch_pur / npass
+        train_loose = epoch_loose / npass
     
     if epoch == start_epoch :
         print('train: ntry: {} npass: {} vq=0: {}'.format(ntry, npass, nfail[0]), file=outfile_log, flush=True)
@@ -207,7 +214,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     
     epoch_loss = 0
     epoch_crt = np.zeros([2,2,2])
-    epoch_pur = 0; epoch_eff = 0
+    epoch_pur = 0; epoch_eff = 0; epoch_loose = 0
     with open('list1-val.csv') as f:
         reader = csv.reader(f, delimiter=' ')
         ntry = 0
@@ -221,7 +228,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load(row, vis=False)
+            coords_np, ft_np = util.load(row, vis=False, res=resolution)
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1
@@ -238,22 +245,26 @@ for epoch in range(start_epoch, start_epoch+nepoch):
             pred_np = prediction.cpu().detach().numpy()
             pred_np = pred_np[:,1] - pred_np[:,0]
             truth_np = truth.cpu().detach().numpy()
-            vtx_id_truth = np.argmax(truth_np)
+            truth_idx = np.argmax(truth_np)
+            pred_idx = np.argmax(pred_np)
             
             c = 0; r = 0; t = 0
-            if ft[vtx_id_truth,1] > 0 :
+            if ft[truth_idx,1] > 0 :
                 c = 1
-            if ft[vtx_id_truth,2] > 0 :
+            if ft[truth_idx,2] > 0 :
                 r = 1
-            if vtx_id_truth == np.argmax(pred_np):
+            if truth_idx == pred_idx:
                 t = 1
             epoch_crt[c,r,t] = epoch_crt[c,r,t] + 1
 
             # pred_cand = pred_np >= pred_np[np.argmax(pred_np)]
             pred_cand = pred_np > 0
-            if pred_cand[vtx_id_truth] == True :
+            if pred_cand[truth_idx] == True :
                 epoch_eff = epoch_eff + 1
                 epoch_pur = epoch_pur + 1./np.count_nonzero(pred_cand)
+            d = np.linalg.norm(coords[pred_idx,:] - coords[truth_idx,:])
+            if d*resolution <= 1.0 :
+                epoch_loose += 1
 
             # loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))
             # loss = balance_BCE(criterion, prediction.view(-1), truth.view(-1))
@@ -267,11 +278,13 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     val_hits = 0
     val_pur = 0
     val_eff = 0
+    val_loose = 0
     if npass > 0 :
         val_loss = epoch_loss / npass
         val_hits = np.sum(epoch_crt[:,:,1]) / npass
         val_eff = epoch_eff / npass
         val_pur = epoch_pur / npass
+        val_loose = epoch_loose / npass
 
     sys.stdout.write("]\n")
     
@@ -287,6 +300,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     metrics += 'hit: {:.6f}, {:.6f}, '.format(train_hits, val_hits)
     metrics += 'eff: {:.6f}, {:.6f}, '.format(train_eff, val_eff)
     metrics += 'pur: {:.6f}, {:.6f}, '.format(train_pur, val_pur)
+    metrics += 'loose: {:.6f}, {:.6f}, '.format(train_loose, val_loose)
     metrics += 'time: {:.6f}, '.format(epoch_time)
     print(metrics)
     print(re.sub(r'[a-z]*: ', r'', metrics), file=outfile_loss, flush=True)

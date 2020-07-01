@@ -2,20 +2,14 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 inputs   = [
-    # 'm16-l5-lr5-t4000v1000/loss.csv',
-    # 'm16-l5-lr4-t1000/loss.csv',
-    # 'm16-l5-lr4-t200/loss.csv',
-    # 'm16-l4-q-t200/loss.csv',
-    # 'm16-l4-q-avg-t200/loss.csv',
-    'checkpoints//loss.csv',
+    't500-res2/loss.csv',
+    't4000-res2/loss.csv',
+    'checkpoints/loss.csv',
     ]
 in_labels = [
-    # '4000, 5',
-    # '1000, 4',
-    # '200, 4',
-    # '200, 4, q',
-    # '200, 4, q-avg',
-    'test',
+    '500lrd',
+    '4000',
+    '1000lrd'
     ]
 col_labels = [
     'epoch', # 0
@@ -27,6 +21,8 @@ col_labels = [
     'veff',
     'tpur',  # 7
     'vpur',
+    'tloose',  # 9
+    'vloose',
     ]
 col_symbol = [
     '',
@@ -38,6 +34,8 @@ col_symbol = [
     '--o',
     '-^',
     '--^',
+    '-s',
+    '--s',
     ]
 
 fontsize = 18
@@ -57,12 +55,12 @@ ax = plt.subplot(122)
 ax.set_title('hit rate')
 for input, in_lable in zip(inputs, in_labels) :
     data = np.genfromtxt(input, delimiter=',')
-    for icol in [3, 4, 7, 8] :
+    for icol in [7] :
         plt.plot(data[:,0], data[:,icol], col_symbol[icol], label='{}:{}'.format(in_lable, col_labels[icol]))
 plt.legend(loc='best',fontsize=fontsize)
 plt.grid()
 plt.ylim(0,1)
 plt.xlabel("Epoch", fontsize=fontsize)
-plt.ylabel("Hit rate", fontsize=fontsize)
+# plt.ylabel("Hit rate", fontsize=fontsize)
 
 plt.show()
