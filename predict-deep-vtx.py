@@ -31,7 +31,7 @@ start_sample = 0
 max_sample = 1000 + start_sample
 resolution = 2.0
 start = timer()
-with open('list1-val.csv') as f:
+with open('list-val.csv') as f:
     reader = csv.reader(f, delimiter=' ')
     isample = 0
     stat = {}

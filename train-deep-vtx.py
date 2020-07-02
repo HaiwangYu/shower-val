@@ -53,7 +53,8 @@ if use_cuda:
 else:
     print("Using CPU.")
 
-model = DeepVtx(dimension=3, device=device)
+nIn = 1
+model = DeepVtx(dimension=3, nIn=nIn, device=device)
 model.train()
 start_epoch = 0
 if start_epoch > 0 :
@@ -71,14 +72,15 @@ optimizer = optim.Adam(model.parameters(), lr=lr0)
 dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.csv','a+')
 outfile_log  = open(dir_checkpoint+'/log','a+')
-ntrain = 1000
-nval = 250
-nepoch = 50
+ntrain = 500
+nval = 150
+nepoch = 20
 # batch_size = 1
-resolution = 2.0
+resolution = 0.3
+loose_cut = 2.0
 
-print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {}'.format(
-    lr0, lr_decay, w, start_epoch, ntrain, nval, device
+print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {} nIn: {} loose_cut: {}'.format(
+    lr0, lr_decay, w, start_epoch, ntrain, nval, device, nIn, loose_cut
 ), file=outfile_log, flush=True)
 
 start = timer()
@@ -96,7 +98,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     epoch_crt = np.zeros([2,2,2])
     epoch_pur = 0; epoch_eff = 0; epoch_loose = 0
     batch_list = []
-    with open('list1-train.csv') as f:
+    with open('list-train.csv') as f:
         optimizer.zero_grad()
         reader = csv.reader(f, delimiter=' ')
         ntry = 0
@@ -104,7 +106,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
         nfail = np.zeros(10)
         for row in reader:
             ntry = ntry + 1
-            if ntry > ntrain :
+            if npass > ntrain :
                 break
             if ntry%(ntrain/toolbar_width) == 0 :
                 sys.stdout.write("=")
@@ -130,7 +132,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
             truth = torch.LongTensor(ft_np[:,-1]).to(device)
             ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
 
-            prediction = model([coords,ft[:,0:1]])
+            prediction = model([coords,ft[:,0:nIn]])
             
             # debug section
             # input = model.inputLayer([torch.LongTensor(coords_np),torch.FloatTensor(ft_np).to(device)])
@@ -166,7 +168,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 epoch_eff += 1
                 epoch_pur += 1./np.count_nonzero(pred_cand)
             d = np.linalg.norm(coords[pred_idx,:] - coords[truth_idx,:])
-            if d*resolution <= 1.0 :
+            if d*resolution <= loose_cut :
                 epoch_loose += 1
             
             # if ntry == 1:
@@ -222,7 +224,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
         nfail = np.zeros(10)
         for row in reader:
             ntry = ntry + 1
-            if ntry > nval :
+            if npass > nval :
                 break
             if ntry%(nval/toolbar_width) == 0 :
                 sys.stdout.write("=")
@@ -240,7 +242,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
             truth = torch.LongTensor(ft_np[:,-1]).to(device)
             ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
 
-            prediction = model([coords,ft[:,0:1]])
+            prediction = model([coords,ft[:,0:nIn]])
             
             pred_np = prediction.cpu().detach().numpy()
             pred_np = pred_np[:,1] - pred_np[:,0]
@@ -263,7 +265,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 epoch_eff = epoch_eff + 1
                 epoch_pur = epoch_pur + 1./np.count_nonzero(pred_cand)
             d = np.linalg.norm(coords[pred_idx,:] - coords[truth_idx,:])
-            if d*resolution <= 1.0 :
+            if d*resolution <= loose_cut :
                 epoch_loose += 1
 
             # loss = criterion(prediction[0:10,0].view(-1),truth[0:10].view(-1))

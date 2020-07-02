@@ -1,3 +1,7 @@
+scratch
+t4000
+eval-*
+
 .vscode
 data*
 test*
@@ -8,8 +12,6 @@ examples
 *log*
 *.swp
 *.csv
-m*-l*
-t*-res*
 checkpoints
 .ipynb_checkpoints
 Untitled*
