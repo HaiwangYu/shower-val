@@ -13,7 +13,15 @@ def vtype_encodeing_func(type) :
     return 0
 vtype_encodeing = np.vectorize(vtype_encodeing_func)
 
-def voxelize(x, y, res=1.) :
+def closest(a, v) :
+    l = a.shape[0]
+    d = np.empty(l)
+    for i in range(l) :
+        d[i] = np.linalg.norm(a[i]-v)
+    idx = np.argmin(d)
+    return d[idx], idx
+
+def voxelize(x, y, resolution=1., vertex_assign_cut = 0.) :
     if len(x.shape) != 2:
         raise Exception('x should have 2 dims')
     
@@ -22,7 +30,7 @@ def voxelize(x, y, res=1.) :
         x[:,i] = x[:,i] - np.min(x[:,i])
     
     # in unit of resolution
-    x = x/res
+    x = x/resolution
     
     # digitize
     x = x.astype(int)
@@ -47,7 +55,22 @@ def voxelize(x, y, res=1.) :
         keys.append(list(key))
         vals.append(list(d[key]/w[key]))
     
-    return np.array(keys), np.array(vals)
+    coords = np.array(keys)
+    ft = np.array(vals)
+
+    if vertex_assign_cut <= 0 :
+        return coords, ft
+    
+    # assigne the vertex flag to a closest reco charge
+    vindex = np.argmax(ft[:,-1])
+    if ft[vindex,0] == 0 :
+        vcoords = coords[vindex]
+        qcoords = coords[ft[:,0]>0]
+        d, i = closest(qcoords, vcoords)
+        if d*resolution < vertex_assign_cut :
+            ft[i,-1] = 1
+    
+    return coords, ft
 
 def batch_load(list) :
     coords = []
@@ -70,7 +93,7 @@ def batch_load(list) :
 
 
 
-def load(meta, vis=False, vox = True, res = 1.) :
+def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0.) :
 
     root_file = uproot.open(meta[0])
     tblob = root_file['T_rec_charge_blob']
@@ -104,7 +127,7 @@ def load(meta, vis=False, vox = True, res = 1.) :
     ft = np.concatenate((vtx_ft, blob_ft, tvtx_ft), axis=0)
     
     if vox :
-        vox_coords, vox_ft = voxelize(coords, ft, res)
+        vox_coords, vox_ft = voxelize(coords, ft, resolution, vertex_assign_cut)
     else :
         return coords, ft
 
@@ -170,7 +193,7 @@ def type_to_color_func(type):
     return 'k'
 type_to_color = np.vectorize(type_to_color_func)
 
-def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0, vis=True):
+def vis_prediction(coords, ft, prediction, truth, ref=None, resolution=1.0, loose_cut=2.0, threshold=0, vis=True):
     # print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
 
     if ft[np.argmax(ft[:,-1]), 0] <= 0 :
@@ -183,8 +206,8 @@ def vis_prediction(coords, ft, prediction, truth, ref=None, threshold=0, vis=Tru
     
     match  = 'Miss'
     for pred_coords in coords[pred_idx] :
-        d = np.linalg.norm(pred_coords - coords[truth_idx])
-        if d <= 2 :
+        d = np.linalg.norm(pred_coords - coords[truth_idx])*resolution
+        if d <= loose_cut :
             match = 'Loose'
         print(pred_coords, coords[truth_idx], d)
     if pred_idx[truth_idx] == True :

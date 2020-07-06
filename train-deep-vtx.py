@@ -56,13 +56,12 @@ else:
 nIn = 1
 model = DeepVtx(dimension=3, nIn=nIn, device=device)
 model.train()
-start_epoch = 0
+start_epoch = 20
 if start_epoch > 0 :
     model.load_state_dict(torch.load('checkpoints/CP{}.pth'.format(start_epoch-1)))
-
 w = 100
-lr0 = 1e-5
-lr_decay = 0.05
+lr0 = 5e-6
+lr_decay = 0.00
 # criterion = nn.BCELoss().to(device)
 weight = torch.tensor([1, w], dtype=torch.float32)
 criterion = nn.CrossEntropyLoss(weight=weight).to(device)
@@ -72,15 +71,21 @@ optimizer = optim.Adam(model.parameters(), lr=lr0)
 dir_checkpoint = 'checkpoints/'
 outfile_loss = open(dir_checkpoint+'/loss.csv','a+')
 outfile_log  = open(dir_checkpoint+'/log','a+')
-ntrain = 500
-nval = 150
-nepoch = 20
+train_list = 'list-train.csv'
+val_list = 'list-val.csv'
+ntrain = 16000
+nval = 4000
+nepoch = 100
 # batch_size = 1
-resolution = 0.3
-loose_cut = 2.0
+resolution = 1.0
+loose_cut = 4.0
+vertex_assign_cut = 0.0
 
-print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {} nIn: {} loose_cut: {}'.format(
-    lr0, lr_decay, w, start_epoch, ntrain, nval, device, nIn, loose_cut
+print('lr: {:.2e}*exp-{:.2e}*epoch weight: {} start: {} ntrain: {} nval: {} device: {} nIn: {} resolution:{} loose_cut: {}'.format(
+    lr0, lr_decay, w, start_epoch, ntrain, nval, device, nIn, resolution, loose_cut
+), file=outfile_log, flush=True)
+print('train: {} val: {}'.format(
+    train_list, val_list
 ), file=outfile_log, flush=True)
 
 start = timer()
@@ -88,7 +93,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     optimizer = scheduler_exp(optimizer, lr0, lr_decay, epoch)
 
     # setup toolbar
-    toolbar_width = 50
+    toolbar_width = 100
     epoch_time = timer()
     sys.stdout.write("train %d : [%s]" % (epoch, " " * toolbar_width))
     sys.stdout.flush()
@@ -98,7 +103,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     epoch_crt = np.zeros([2,2,2])
     epoch_pur = 0; epoch_eff = 0; epoch_loose = 0
     batch_list = []
-    with open('list-train.csv') as f:
+    with open(train_list) as f:
         optimizer.zero_grad()
         reader = csv.reader(f, delimiter=' ')
         ntry = 0
@@ -106,13 +111,13 @@ for epoch in range(start_epoch, start_epoch+nepoch):
         nfail = np.zeros(10)
         for row in reader:
             ntry = ntry + 1
-            if npass > ntrain :
+            if ntry > ntrain :
                 break
             if ntry%(ntrain/toolbar_width) == 0 :
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load(row, vis=False, res=resolution)
+            coords_np, ft_np = util.load(row, vis=False, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1
@@ -217,20 +222,20 @@ for epoch in range(start_epoch, start_epoch+nepoch):
     epoch_loss = 0
     epoch_crt = np.zeros([2,2,2])
     epoch_pur = 0; epoch_eff = 0; epoch_loose = 0
-    with open('list1-val.csv') as f:
+    with open(val_list) as f:
         reader = csv.reader(f, delimiter=' ')
         ntry = 0
         npass =  0
         nfail = np.zeros(10)
         for row in reader:
             ntry = ntry + 1
-            if npass > nval :
+            if ntry > nval :
                 break
             if ntry%(nval/toolbar_width) == 0 :
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load(row, vis=False, res=resolution)
+            coords_np, ft_np = util.load(row, vis=False, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1
