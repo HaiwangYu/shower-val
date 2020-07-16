@@ -14,7 +14,15 @@ import csv
 import util
 
 
-def gen_dist(input_list='list/list-train.csv', nsample = 10) :
+def gen_dist(nsample = 500) :
+    input_list='list/nuecc-21k-train.csv'
+    input_list='list/nuecc-39k-train.csv'
+    model_path = 't16000/m16-l5-lrd-res1.0/CP35.pth'
+    model_path = 'checkpoints/CP6.pth'
+
+    # TODO tune these cuts
+    resolution = 1
+    dnn_trad_dist_cut = 2 # cm
 
     # Use the GPU if there is one and sparseconvnet can use it, otherwise CPU
     # use_cuda = torch.cuda.is_available() and scn.SCN.is_cuda_build()
@@ -31,12 +39,10 @@ def gen_dist(input_list='list/list-train.csv', nsample = 10) :
     model = DeepVtx(dimension=3, nIn=nIn, device=device)
     model.train()
 
-    model_path = 't16000/m16-l5-lrd-res1.0/CP35.pth'
     model.load_state_dict(torch.load(model_path))
 
     start_sample = 0
     max_sample = nsample + start_sample
-    resolution = 1.0
     dists = []
     start = timer()
     with open(input_list) as f:
@@ -91,8 +97,6 @@ def gen_dist(input_list='list/list-train.csv', nsample = 10) :
             d_dnn_trad, i = util.closest(coords_p_tp, coords_p_dnn)
             coords_p_hybrid = coords_p_tp[i]
             
-            # TODO tune this cut
-            dnn_trad_dist_cut = 2 # cm
             if d_dnn_trad > dnn_trad_dist_cut :
                 print('dnn_trad_dist_cut fail')
                 coords_p_hybrid = coords_p_trad
@@ -121,9 +125,11 @@ def gen_dist(input_list='list/list-train.csv', nsample = 10) :
     return dists
 
 if __name__ == '__main__' :
-    input_tag = 'val'
-    # dists = gen_dist('list/list-{}.csv'.format(input_tag), 16000)
-    dists = np.loadtxt('hybrid-{}-2.csv'.format(input_tag), delimiter=',')
+    nsample = 500
+    input_tag = 'train'
+    input_list = 'hybrid.csv'
+    dists = gen_dist(nsample)
+    # dists = np.loadtxt(input_list, delimiter=',')
 
     dists2 = np.loadtxt('dist-{}.csv'.format(input_tag), delimiter=',') # from file
 
@@ -132,11 +138,11 @@ if __name__ == '__main__' :
     fig = plt.figure(1)
     ax = fig.add_subplot(111)
     ax.set_title(input_tag, fontsize=fontsize)
-    ax.hist(dists[:,0], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='DNN')
-    ax.hist(dists[:,1], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Tradition')
-    ax.hist(dists[:,2], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Hybrid')
-    ax.hist(dists2[:,1], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Closest Charge')
-    ax.hist(dists2[:,2], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Closest Candidate')
+    ax.hist(dists[0:nsample,0], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='DNN')
+    ax.hist(dists[0:nsample,1], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Tradition')
+    ax.hist(dists[0:nsample,2], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Hybrid')
+    ax.hist(dists2[0:nsample,1], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Closest Charge')
+    ax.hist(dists2[0:nsample,2], 5000, range=(-0.05, 499.5), density=True, histtype='step', linewidth=2, cumulative=True, label='Closest Candidate')
     plt.legend(loc='lower right', fontsize=fontsize)
     plt.xlabel('Distance [cm]', fontsize=fontsize)
     plt.ylabel('Probability', fontsize=fontsize)

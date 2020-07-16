@@ -95,7 +95,12 @@ def batch_load(list) :
 
 def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0.) :
 
-    root_file = uproot.open(meta[0])
+    # root_file = uproot.open(meta[0])
+    try:
+        root_file = uproot.open(meta[0])
+    except :
+        print('Failed to load ', meta[0])
+        return None
     tblob = root_file['T_rec_charge_blob']
     tvtx = root_file['T_vtx']
 

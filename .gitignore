@@ -2,6 +2,9 @@ scratch
 t4000
 t8000
 t16000
+t32k
+t500*
+numucc*
 
 .vscode
 data*

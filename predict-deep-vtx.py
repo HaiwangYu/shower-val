@@ -35,7 +35,7 @@ model.load_state_dict(torch.load(model_path))
 start_sample = 0
 max_sample = 1000 + start_sample
 resolution = 1.0
-val_list = 'list/list-val.csv'
+val_list = 'list/numucc-1.2k-train.csv'
 roc_samples = []
 start = timer()
 with open(val_list) as f:
