@@ -4,10 +4,13 @@ t100
 t500
 t16k
 t48k
+numu18k
 numucc*
 
 .vscode
 data*
+tmp
+tmp*
 test*
 fail*
 backup
