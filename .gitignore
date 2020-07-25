@@ -1,9 +1,9 @@
 scratch
-t4000
-t8000
-t16000
-t32k
-t500*
+CELoss
+t100
+t500
+t16k
+t48k
 numucc*
 
 .vscode

@@ -1,3 +1,5 @@
+import math
+
 import uproot
 import numpy as np
 import matplotlib.pyplot as plt
@@ -91,9 +93,13 @@ def batch_load(list) :
 
     return coords, fts
 
+def dist2prob(x, t, s = 1.0) :
+    d = []
+    for i in range(x.shape[0]) :
+        d.append(math.exp(-(np.linalg.norm(x[i]-t)/s)**2/2))
+    return np.array(d)
 
-
-def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0.) :
+def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0., mode='dist', sigma=1.0) :
 
     # root_file = uproot.open(meta[0])
     try:
@@ -104,12 +110,22 @@ def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0.) :
     tblob = root_file['T_rec_charge_blob']
     tvtx = root_file['T_vtx']
 
+    tvx = np.array([float(meta[2])])
+    tvy = np.array([float(meta[3])])
+    tvz = np.array([float(meta[4])])
+    tvtx_coords = np.stack((tvx,tvy,tvz), axis=1)
+    tvtx_ft = np.stack((np.zeros_like(tvx),np.zeros_like(tvx),np.zeros_like(tvx),np.ones_like(tvx)), axis=1)
+
     x = tblob.array('x')
     y = tblob.array('y')
     z = tblob.array('z')
     q = tblob.array('q')
     blob_coords = np.stack((x,y,z), axis=1)
-    blob_ft = np.stack((q,np.zeros_like(q),np.zeros_like(q),np.zeros_like(q)), axis=1)
+
+    blob_truth = np.zeros_like(q)
+    if mode == 'dist' :
+        blob_truth = dist2prob(blob_coords,tvtx_coords[0],sigma)
+    blob_ft = np.stack((q,np.zeros_like(q),np.zeros_like(q),blob_truth), axis=1)
 
     vx = tvtx.array('x')
     vy = tvtx.array('y')
@@ -122,14 +138,12 @@ def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0.) :
     vtx_coords = vtx_coords[np.argsort(vtx_ft[:, 1])[::-1]]
     vtx_ft = vtx_ft[np.argsort(vtx_ft[:, 1])[::-1]]
 
-    tvx = np.array([float(meta[2])])
-    tvy = np.array([float(meta[3])])
-    tvz = np.array([float(meta[4])])
-    tvtx_coords = np.stack((tvx,tvy,tvz), axis=1)
-    tvtx_ft = np.stack((np.zeros_like(tvx),np.zeros_like(tvx),np.zeros_like(tvx),np.ones_like(tvx)), axis=1)
-
-    coords = np.concatenate((vtx_coords, blob_coords, tvtx_coords), axis=0)
-    ft = np.concatenate((vtx_ft, blob_ft, tvtx_ft), axis=0)
+    if mode == 'dist' :
+        coords = np.concatenate((vtx_coords, blob_coords), axis=0)
+        ft = np.concatenate((vtx_ft, blob_ft), axis=0)
+    else :
+        coords = np.concatenate((vtx_coords, blob_coords, tvtx_coords), axis=0)
+        ft = np.concatenate((vtx_ft, blob_ft, tvtx_ft), axis=0)
     
     if vox :
         vox_coords, vox_ft = voxelize(coords, ft, resolution, vertex_assign_cut)
@@ -142,24 +156,38 @@ def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0.) :
         
         # 2D
         ax = fig.add_subplot(121)
-        charge_filter = ft[:,0] > 0
-        img = ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,0], cmap="jet", alpha=0.1)
-        cand_filter = ft[:,1] > 0
-        img = ax.scatter(coords[cand_filter,2], coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
-        truth_fiter = ft[:,3] > 0
-        img = ax.scatter(coords[truth_fiter,2], coords[truth_fiter,1], marker='s', facecolors='none', edgecolors='r')
+        if mode == 'dist' :
+            charge_filter = ft[:,0] > 0
+            img = ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,-1], cmap="jet", alpha=0.5)
+            plt.colorbar(img)
+            cand_filter = ft[:,1] > 0
+            img = ax.scatter(coords[cand_filter,2], coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
+        else :
+            charge_filter = ft[:,0] > 0
+            img = ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,0], cmap="jet", alpha=0.1)
+            cand_filter = ft[:,1] > 0
+            img = ax.scatter(coords[cand_filter,2], coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
+            truth_fiter = ft[:,3] > 0
+            img = ax.scatter(coords[truth_fiter,2], coords[truth_fiter,1], marker='s', facecolors='none', edgecolors='r')
         plt.xlabel('Z [cm]')
         plt.ylabel('Y [cm]')
         plt.grid()
         
         # after voxelize
         ax = fig.add_subplot(122)
-        charge_filter = vox_ft[:,0] > 0
-        img = ax.scatter(vox_coords[charge_filter,2], vox_coords[charge_filter,1], c=vox_ft[charge_filter,0], cmap="jet", alpha=0.1)
-        cand_filter = vox_ft[:,1] > 0
-        img = ax.scatter(vox_coords[cand_filter,2], vox_coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
-        truth_fiter = vox_ft[:,3] > 0
-        img = ax.scatter(vox_coords[truth_fiter,2], vox_coords[truth_fiter,1], marker='s', facecolors='none', edgecolors='r')
+        if mode == 'dist' :
+            charge_filter = vox_ft[:,0] > 0
+            img = ax.scatter(vox_coords[charge_filter,2], vox_coords[charge_filter,1], c=vox_ft[charge_filter,-1], cmap="jet", alpha=0.5)
+            plt.colorbar(img)
+            cand_filter = vox_ft[:,1] > 0
+            img = ax.scatter(vox_coords[cand_filter,2], vox_coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
+        else :
+            charge_filter = vox_ft[:,0] > 0
+            img = ax.scatter(vox_coords[charge_filter,2], vox_coords[charge_filter,1], c=vox_ft[charge_filter,0], cmap="jet", alpha=0.1)
+            cand_filter = vox_ft[:,1] > 0
+            img = ax.scatter(vox_coords[cand_filter,2], vox_coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
+            truth_fiter = vox_ft[:,3] > 0
+            img = ax.scatter(vox_coords[truth_fiter,2], vox_coords[truth_fiter,1], marker='s', facecolors='none', edgecolors='r')
         plt.xlabel('Z [cm]')
         plt.ylabel('Y [cm]')
         plt.grid()

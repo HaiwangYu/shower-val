@@ -59,11 +59,11 @@ else:
 nIn = 1
 model = DeepVtx(dimension=3, nIn=nIn, device=device)
 model.train()
-start_epoch = 5
+start_epoch = 0
 if start_epoch > 0 :
     model.load_state_dict(torch.load('checkpoints/CP{}.pth'.format(start_epoch-1)))
 w = 100
-lr0 = 1e-5
+lr0 = 1e-3
 lr_decay = 0.05
 # criterion = nn.BCELoss().to(device)
 weight = torch.tensor([1, w], dtype=torch.float32)
@@ -76,9 +76,9 @@ outfile_loss = open(dir_checkpoint+'/loss.csv','a+')
 outfile_log = open(dir_checkpoint+'/log','a+')
 train_list = 'list/nuecc-39k-train.csv'
 val_list = 'list/nuecc-21k-val.csv'
-ntrain = 32000
-nval = 4000
-nepoch = 100
+ntrain = 100
+nval = 20
+nepoch = 50
 # batch_size = 1
 resolution = 1.0
 loose_cut = 2.0
@@ -120,7 +120,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load(row, vis=False, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
+            coords_np, ft_np = util.load(row, vis=True, resolution=resolution, vertex_assign_cut=vertex_assign_cut, mode='vox')
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1
@@ -239,7 +239,7 @@ for epoch in range(start_epoch, start_epoch+nepoch):
                 sys.stdout.write("=")
                 sys.stdout.flush()
             
-            coords_np, ft_np = util.load(row, vis=False, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
+            coords_np, ft_np = util.load(row, vis=False, resolution=resolution, vertex_assign_cut=vertex_assign_cut, mode='vox')
             
             if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                 nfail[0] = nfail[0] + 1

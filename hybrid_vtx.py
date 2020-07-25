@@ -13,16 +13,24 @@ from timeit import default_timer as timer
 import csv
 import util
 
+nsample = 100
+input_tag = 'val'
+input_list = 'hybrid.csv'
 
-def gen_dist(nsample = 500) :
-    input_list='list/nuecc-21k-train.csv'
-    input_list='list/nuecc-39k-train.csv'
-    model_path = 't16000/m16-l5-lrd-res1.0/CP35.pth'
-    model_path = 'checkpoints/CP6.pth'
+dists2 = np.loadtxt('dist-{}.csv'.format(input_tag), delimiter=',') # from file
+
+def gen_dist() :
+    input_list='list/nuecc-21k-{}.csv'.format(input_tag)
+    input_list='list/numucc-24k-{}.csv'.format(input_tag)
+    
+    model_path = 'CELoss/t16k/m16-l5-lrd-res1.0/CP35.pth'
+    # model_path = 't16k/m16-l5-lr5d-res0.5/CP48.pth'
+    # model_path = 't48k/m16-l5-lr5d-res1.0/CP5.pth'
+    model_path = 't48k/m16-l5-lr5d-res0.5/CP19.pth'
 
     # TODO tune these cuts
-    resolution = 1
-    dnn_trad_dist_cut = 2 # cm
+    resolution = 0.5
+    dnn_trad_dist_cut = 2.0 # cm
 
     # Use the GPU if there is one and sparseconvnet can use it, otherwise CPU
     # use_cuda = torch.cuda.is_available() and scn.SCN.is_cuda_build()
@@ -56,7 +64,7 @@ def gen_dist(nsample = 500) :
                 break
             print('isample: {} : {}'.format(isample,row[0]))
             
-            coords_np, ft_np = util.load(row, vis=False, resolution=resolution)
+            coords_np, ft_np = util.load(row, vis=False, resolution=resolution, mode='vox')
             Truth_shower_KE_MeV = float(row[5])
             
             # vertex charge cut
@@ -77,7 +85,7 @@ def gen_dist(nsample = 500) :
             ################
 
             # point based coords and ft
-            coords_p_np, ft_p_np = util.load(row, vis=False, vox=False)
+            coords_p_np, ft_p_np = util.load(row, vis=False, vox=False, mode='vox')
             
             # vox -> point
             coords_np = coords_np.astype(float)
@@ -107,14 +115,13 @@ def gen_dist(nsample = 500) :
             d_dnn = np.linalg.norm(coords_p_dnn - coords_p_truth)
             d_trad = np.linalg.norm(coords_p_trad - coords_p_truth)
             d_hybrid = np.linalg.norm(coords_p_hybrid - coords_p_truth)
-            dists.append([d_dnn, d_trad, d_hybrid, d_dnn_trad, Truth_shower_KE_MeV])
+            dists.append([d_dnn, d_trad, d_hybrid, d_dnn_trad, Truth_shower_KE_MeV, np.max(pred_np)])
             # print('hybrid dist: {}'.format(d_dnn_trad))
             
             # voxel based vis
-            # cut = 1.
-            # if d_dnn < cut and d_hybrid > cut :
-            #     print('debug: ', dists[-1])
-            #     ret = util.vis_prediction(coords_np, ft_np, pred_np, truth_np, ref1=ft_np[:,1], ref2=ft_np[:,2], resolution=1., loose_cut=1., vis=True)
+            # if d_hybrid < 0.1 :
+            #     print('debug: ', d_hybrid)
+            #     ret = util.vis_prediction(coords_np, ft_np, pred_np, truth_np, ref1=ft_np[:,1], ref2=ft_np[:,2], resolution=resolution, loose_cut=1., vis=True)
             
     end = timer()
     print('time: {0:.1f} ms'.format((end-start)/1*1000))
@@ -125,13 +132,8 @@ def gen_dist(nsample = 500) :
     return dists
 
 if __name__ == '__main__' :
-    nsample = 500
-    input_tag = 'train'
-    input_list = 'hybrid.csv'
-    dists = gen_dist(nsample)
-    # dists = np.loadtxt(input_list, delimiter=',')
-
-    dists2 = np.loadtxt('dist-{}.csv'.format(input_tag), delimiter=',') # from file
+    dists = gen_dist()
+    # dists = np.loadtxt('hybrid.csv', delimiter=',')
 
     fontsize = 24
     

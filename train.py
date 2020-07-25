@@ -64,6 +64,9 @@ def get_args():
     parser.add_argument('--use-cuda', action='store_true',
                         help="Use cuda",
                         default=False)
+    parser.add_argument('--vis', action='store_true',
+                        help="visualize data",
+                        default=False)
 
     return parser.parse_args()
 
@@ -100,11 +103,11 @@ if __name__ == "__main__":
     
     # loss
     
-    w = 100
-    weight = torch.tensor([1, w], dtype=torch.float32)
-    criterion = nn.CrossEntropyLoss(weight=weight).to(device)
+    # w = 100
+    # weight = torch.tensor([1, w], dtype=torch.float32)
+    # criterion = nn.CrossEntropyLoss(weight=weight).to(device)
     
-    # criterion = nn.MSELoss().to(device)
+    criterion = nn.MSELoss().to(device)
 
     # optimizer
     lr0 = args.lr0
@@ -159,13 +162,10 @@ if __name__ == "__main__":
                     sys.stdout.write("=")
                     sys.stdout.flush()
                 
-                coords_np, ft_np = util.load(row, vis=False, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
+                coords_np, ft_np = util.load(row, vis=args.vis, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
                 
                 if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                     nfail[0] = nfail[0] + 1
-                    # if epoch == start_epoch :
-                    #     print('no charge for {}'.format(ntry))
-                    #     util.load_vtx(row, vis=True)
                     continue
                 
                 # mini-batch
@@ -176,7 +176,7 @@ if __name__ == "__main__":
                 #     coords_np, ft_np = util.batch_load(batch_list)
                 
                 coords = torch.LongTensor(coords_np)
-                truth = torch.LongTensor(ft_np[:,-1]).to(device)
+                truth = torch.FloatTensor(ft_np[:,-1]).to(device)
                 ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
 
                 prediction = model([coords,ft[:,0:nIn]])
@@ -219,15 +219,7 @@ if __name__ == "__main__":
                 d = np.linalg.norm(coords[pred_idx,:] - coords[truth_idx,:])
                 if d*resolution <= loose_cut :
                     epoch_loose += 1
-                
-                # if ntry == 1:
-                #     print(coords_np[coords_np[:,0]==93])
-                #     print(ft_np[coords_np[:,0]==93])
-                #     print(ntry, ft_np)
-                #     exit()
-                
-                loss = criterion(prediction,truth)
-                # loss = DistanceLoss(coords[pred_idx].type(torch.FloatTensor), coords[truth_idx].type(torch.FloatTensor))
+                loss = criterion(prediction[:,1]-prediction[:,0],truth)
                 if(loss is None) :
                     continue
                 epoch_loss += loss.item()
@@ -278,7 +270,7 @@ if __name__ == "__main__":
                     sys.stdout.write("=")
                     sys.stdout.flush()
                 
-                coords_np, ft_np = util.load(row, vis=False, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
+                coords_np, ft_np = util.load(row, vis=args.vis, resolution=resolution, vertex_assign_cut=vertex_assign_cut)
                 
                 if ft_np[np.argmax(ft_np[:,-1]), 0] <= 0 :
                     nfail[0] = nfail[0] + 1
@@ -287,7 +279,7 @@ if __name__ == "__main__":
                     continue
                 
                 coords = torch.LongTensor(coords_np)
-                truth = torch.LongTensor(ft_np[:,-1]).to(device)
+                truth = torch.FloatTensor(ft_np[:,-1]).to(device)
                 ft = torch.FloatTensor(ft_np[:,0:-1]).to(device)
 
                 prediction = model([coords,ft[:,0:nIn]])
@@ -318,8 +310,7 @@ if __name__ == "__main__":
                 if d*resolution <= loose_cut :
                     epoch_loose += 1
 
-                loss = criterion(prediction,truth)
-                # loss = DistanceLoss(coords[pred_idx].type(torch.FloatTensor), coords[truth_idx].type(torch.FloatTensor))
+                loss = criterion(prediction[:,1]-prediction[:,0],truth)
                 if(loss is None) :
                     continue
                 epoch_loss += loss.item()

@@ -41,7 +41,7 @@ def gen_dist(input_list='list/list-val.csv', nsample = 10) :
             qcoords = coords[ft[:,0]>0]
             d_charge, i = util.closest(qcoords, t)
 
-            coords_p_np, ft_p_np = util.load(row, vis=False, vox=False)
+            coords_p_np, ft_p_np = util.load(row, vis=False, vox=False, mode='vox')
             trad_pred_filter = ft_p_np[:,1] > 0
             coords_p_tp = coords_p_np[trad_pred_filter]
             ft_p_tp = ft_p_np[trad_pred_filter]
@@ -81,7 +81,7 @@ def gen_dist(input_list='list/list-val.csv', nsample = 10) :
     return dists
 
 if __name__ == '__main__' :
-    input_list='list/list-val.csv'
+    input_list='list/numucc-24k-val.csv'
     dists = gen_dist(input_list, 1000) # from gen
     # dists = np.loadtxt('dist.csv', delimiter=',') # from file
 

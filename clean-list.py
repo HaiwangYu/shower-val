@@ -1,4 +1,6 @@
+#!/usr/bin/env python
 
+import sys
 import os
 from os import path
 from timeit import default_timer as timer
@@ -38,6 +40,6 @@ def clean_list(input_list, output_list='out.csv', fail_list='fail.csv') :
                 writer.writerow(row)
 
 if __name__ == '__main__' :
-    input_list='test.csv'
+    input_list=sys.argv[1]
 
     clean_list(input_list)

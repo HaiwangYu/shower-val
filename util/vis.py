@@ -12,7 +12,7 @@ def type_to_color_func(type):
     return 'k'
 type_to_color = np.vectorize(type_to_color_func)
 
-def vis_prediction(coords, ft, prediction, truth, ref1=None, ref2=None, resolution=1.0, loose_cut=2.0, threshold=0, vis=True):
+def vis_prediction_seg(coords, ft, prediction, truth, ref1=None, ref2=None, resolution=1.0, loose_cut=2.0, threshold=0, vis=True):
     # print('{} points pass {} threshold'.format(np.count_nonzero(prediction>threshold), threshold))
 
     if ft[np.argmax(ft[:,-1]), 0] <= 0 :
@@ -115,3 +115,34 @@ def vis_prediction(coords, ft, prediction, truth, ref1=None, ref2=None, resoluti
     
     plt.show()
     plt.close()
+
+
+
+def vis_prediction_regseg(pred, truth, trad=None, cand=None, x=2, y=1, resolution=0.5, loose_cut=1.0, vis=True):
+    fontsize = 24
+
+    fig = plt.figure(0)
+    
+    ax = fig.add_subplot(111)
+    
+    img = ax.scatter(pred[:,x], pred[:,y], c=pred[:,-1], cmap='jet', alpha=0.5, label='Prediction')
+    plt.colorbar(img)
+
+    pred_idx = np.argmax(pred[:,-1])
+    ax.scatter(pred[pred_idx,x], pred[pred_idx,y], marker='^', facecolors='none', edgecolors='g', label='Prediction Max')
+
+    truth_idx = np.argmax(truth[:,-1])
+    img = ax.scatter(truth[truth_idx,x], truth[truth_idx,y], marker='s', facecolors='none', edgecolors='r', label='Truth')
+
+    dist_dnn_truth = np.linalg.norm(pred[pred_idx,0:3]-truth[truth_idx,0:3]) * resolution
+
+    plt.legend(loc='best', fontsize=fontsize)
+    plt.xlabel('Z [cm]')
+    plt.ylabel('Y [cm]')
+    
+    if vis :
+        print('{:.2f} {:.2f} {}'.format(pred[pred_idx,-1], dist_dnn_truth, dist_dnn_truth<loose_cut))
+        plt.show()
+    
+    plt.close()
+    return pred[pred_idx,-1], dist_dnn_truth
