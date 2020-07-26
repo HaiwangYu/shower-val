@@ -48,7 +48,7 @@ def voxelize(x, y, resolution=1., vertex_assign_cut = 0.) :
             d[key][1:] = np.maximum(d[key][1:],y[idx,][1:])
             w[key][1:] = np.ones_like(y[idx,][1:])
         else :
-            d[key] = y[idx,]
+            d[key] = np.copy(y[idx,])
             w[key] = np.ones_like(y[idx,])
     
     keys = []
