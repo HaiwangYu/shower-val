@@ -17,16 +17,14 @@ nsample = 100
 input_tag = 'val'
 input_list = 'hybrid.csv'
 
-dists2 = np.loadtxt('dist-{}.csv'.format(input_tag), delimiter=',') # from file
+dists2 = np.loadtxt('dist-nuecc-16k-{}.csv'.format(input_tag), delimiter=',') # from file
 
 def gen_dist() :
     input_list='list/nuecc-21k-{}.csv'.format(input_tag)
     input_list='list/numucc-24k-{}.csv'.format(input_tag)
     
     model_path = 'CELoss/t16k/m16-l5-lrd-res1.0/CP35.pth'
-    # model_path = 't16k/m16-l5-lr5d-res0.5/CP48.pth'
-    # model_path = 't48k/m16-l5-lr5d-res1.0/CP5.pth'
-    model_path = 't48k/m16-l5-lr5d-res0.5/CP19.pth'
+    model_path = 't48k/m16-l5-lr5d-res0.5/CP24.pth'
 
     # TODO tune these cuts
     resolution = 0.5
@@ -64,7 +62,7 @@ def gen_dist() :
                 break
             print('isample: {} : {}'.format(isample,row[0]))
             
-            coords_np, ft_np = util.load(row, vis=False, resolution=resolution, mode='vox')
+            coords_np, ft_np = util.load(row, vis=True, resolution=resolution, mode='vox')
             Truth_shower_KE_MeV = float(row[5])
             
             # vertex charge cut

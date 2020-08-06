@@ -164,7 +164,7 @@ def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0., m
             img = ax.scatter(coords[cand_filter,2], coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
         else :
             charge_filter = ft[:,0] > 0
-            img = ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,0], cmap="jet", alpha=0.1)
+            img = ax.scatter(coords[charge_filter,2], coords[charge_filter,1], c=ft[charge_filter,0], cmap="jet", alpha=0.5)
             cand_filter = ft[:,1] > 0
             img = ax.scatter(coords[cand_filter,2], coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
             truth_fiter = ft[:,3] > 0
@@ -183,13 +183,13 @@ def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0., m
             img = ax.scatter(vox_coords[cand_filter,2], vox_coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
         else :
             charge_filter = vox_ft[:,0] > 0
-            img = ax.scatter(vox_coords[charge_filter,2], vox_coords[charge_filter,1], c=vox_ft[charge_filter,0], cmap="jet", alpha=0.1)
+            img = ax.scatter(vox_coords[charge_filter,2], vox_coords[charge_filter,1], c=vox_ft[charge_filter,0], cmap="jet", alpha=0.5)
             cand_filter = vox_ft[:,1] > 0
             img = ax.scatter(vox_coords[cand_filter,2], vox_coords[cand_filter,1], marker='*', facecolors='none', edgecolors='y')
             truth_fiter = vox_ft[:,3] > 0
             img = ax.scatter(vox_coords[truth_fiter,2], vox_coords[truth_fiter,1], marker='s', facecolors='none', edgecolors='r')
-        plt.xlabel('Z [cm]')
-        plt.ylabel('Y [cm]')
+        plt.xlabel('Z [{}cm]'.format(resolution))
+        plt.ylabel('Y [{}cm]'.format(resolution))
         plt.grid()
         
         plt.show()

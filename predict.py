@@ -5,8 +5,6 @@ import sparseconvnet as scn
 import uproot
 import matplotlib.pyplot as plt
 import numpy as np
-from model import Hello
-from model import ResNet
 from model import DeepVtx
 
 from timeit import default_timer as timer
@@ -32,9 +30,10 @@ model_path = 't48k/m16-l5-lr5d-res0.5/CP24.pth'
 model.load_state_dict(torch.load(model_path))
 
 start_sample = 0
-max_sample = 10 + start_sample
+max_sample = 1000 + start_sample
 resolution = 0.5
 loose_cut = 1.0
+# val_list = 'list/numucc-24k-val.csv'
 val_list = 'list/nuecc-21k-val.csv'
 results = []
 start = timer()
@@ -64,18 +63,10 @@ with open(val_list) as f:
         result = util.vis_prediction_regseg(
             np.column_stack((coords_np, pred_np)),
             np.column_stack((coords_np, truth_np)),
-            vis=False
+            cand=np.column_stack((coords_np, ft_np[:,1])),
+            vis=True
             )
         results.append(result)
-    
-    results = np.array(results)
-    print(results)
-    fig = plt.figure(0)
-    ax = fig.add_subplot(111)
-    ax.hist(results[:,results[:,1]<=loose_cut], 100, range=(-1,1), linewidth=2, label='Good')
-    ax.hist(results[:,results[:,1]>loose_cut], 100, range=(-1,1), linewidth=2, label='Bad')
-    plt.legend(loc='best')
-    plt.show()
 
 end = timer()
 print('time: {0:.1f} ms'.format((end-start)/1*1000))

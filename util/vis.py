@@ -125,20 +125,24 @@ def vis_prediction_regseg(pred, truth, trad=None, cand=None, x=2, y=1, resolutio
     
     ax = fig.add_subplot(111)
     
-    img = ax.scatter(pred[:,x], pred[:,y], c=pred[:,-1], cmap='jet', alpha=0.5, label='Prediction')
+    img = ax.scatter(pred[:,x], pred[:,y], c=pred[:,-1], cmap='jet', alpha=0.2, label='Prediction')
     plt.colorbar(img)
 
     pred_idx = np.argmax(pred[:,-1])
-    ax.scatter(pred[pred_idx,x], pred[pred_idx,y], marker='^', facecolors='none', edgecolors='g', label='Prediction Max')
+    ax.scatter(pred[pred_idx,x], pred[pred_idx,y], marker='^', facecolors='none', edgecolors='r', label='Prediction Max')
 
     truth_idx = np.argmax(truth[:,-1])
     img = ax.scatter(truth[truth_idx,x], truth[truth_idx,y], marker='s', facecolors='none', edgecolors='r', label='Truth')
 
     dist_dnn_truth = np.linalg.norm(pred[pred_idx,0:3]-truth[truth_idx,0:3]) * resolution
+    
+    if cand is not None :
+        flt = cand[:,-1]>0
+        img = ax.scatter(cand[flt,x], cand[flt,y], marker='+', facecolors='g', edgecolors='none', label='Candidate')
 
     plt.legend(loc='best', fontsize=fontsize)
-    plt.xlabel('Z [cm]')
-    plt.ylabel('Y [cm]')
+    plt.xlabel('Z [{}cm]'.format(resolution), fontsize=fontsize)
+    plt.ylabel('Y [{}cm]'.format(resolution), fontsize=fontsize)
     
     if vis :
         print('{:.2f} {:.2f} {}'.format(pred[pred_idx,-1], dist_dnn_truth, dist_dnn_truth<loose_cut))

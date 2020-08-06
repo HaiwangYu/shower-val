@@ -2,21 +2,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 in_files   = [
-    'CELoss/t16k/m16-l5-lrd-res1.0/loss.csv',
-    # 'CELoss/t32k/m16-l5-lr5d-res1.0/loss.csv',
-    't16k/m16-l5-lr5d-res0.5/loss.csv',
-    # 't16k/m16-l5-lr4d-res0.5/loss.csv',
+    # 'CELoss/t16k/m16-l5-lrd-res1.0/loss.csv',
+    # 't16k/m16-l5-lr5d-res0.5/loss.csv',
     't48k/m16-l5-lr5d-res0.5/loss.csv',
-    't48k/m16-l5-lr5d-res1.0/loss.csv',
+    # 't48k/m16-l5-lr5d-res1.0/loss.csv',
     ]
 in_labels = [
-    'CE16r1.0',
-    'MSE16r0.5',
+    # 'CE16r1.0',
+    # 'MSE16r0.5',
     'MSE48r0.5',
-    'MSE48r1.0',
+    # 'MSE48r1.0',
     ]
 in_colors = [
-    'r',
+    # 'r',
     'b',
     'y',
     'g',
@@ -47,8 +45,8 @@ col_symbol = [
     '--o',
     '-^',
     '--^',
-    '-s',
-    '--s',
+    '-',
+    '--',
     ]
 
 fontsize = 24
@@ -59,7 +57,7 @@ for in_file, in_lable, in_color in zip(in_files, in_labels, in_colors) :
     data = np.genfromtxt(in_file, delimiter=',')
     for icol in [1, 2] :
         plt.plot(data[:,0], data[:,icol], col_symbol[icol], c=in_color, label='{}:{}'.format(in_lable, col_labels[icol]))
-# plt.legend(loc='best',fontsize=fontsize)
+plt.legend(loc='best',fontsize=fontsize)
 plt.grid()
 plt.xlabel("Epoch", fontsize=fontsize)
 plt.ylabel("Mean Loss", fontsize=fontsize)
