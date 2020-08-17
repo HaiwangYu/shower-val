@@ -21,7 +21,7 @@ dists2 = np.loadtxt('dist-nuecc-16k-{}.csv'.format(input_tag), delimiter=',') # 
 
 def gen_dist() :
     input_list='list/nuecc-21k-{}.csv'.format(input_tag)
-    input_list='list/numucc-24k-{}.csv'.format(input_tag)
+    # input_list='list/numucc-24k-{}.csv'.format(input_tag)
     
     model_path = 'CELoss/t16k/m16-l5-lrd-res1.0/CP35.pth'
     model_path = 't48k/m16-l5-lr5d-res0.5/CP24.pth'
@@ -78,6 +78,9 @@ def gen_dist() :
             pred_np = pred_np[:,1] - pred_np[:,0]
             truth_np = truth.cpu().detach().numpy()
             
+            dnn_pred_idx = np.argmax(pred_np)
+            # print('coords_np:', coords_np[dnn_pred_idx])
+            
             ################
             # hybrid alg.
             ################
@@ -92,8 +95,9 @@ def gen_dist() :
                 coords_np[:,i] += np.min(coords_p_np[:,i]) + 0.5*resolution
 
             # TODO handle multiple candidates
-            dnn_pred_idx = np.argmax(pred_np)
             coords_p_dnn = coords_np[dnn_pred_idx]
+            # print('coords_p_dnn:', coords_p_dnn)
+            # exit()
 
             trad_pred_filter = ft_p_np[:,1] > 0
             coords_p_tp = coords_p_np[trad_pred_filter]

@@ -144,7 +144,7 @@ def load(meta, vis=False, vox = True, resolution = 1., vertex_assign_cut = 0., m
     else :
         coords = np.concatenate((vtx_coords, blob_coords, tvtx_coords), axis=0)
         ft = np.concatenate((vtx_ft, blob_ft, tvtx_ft), axis=0)
-    
+    # np.savez('/home/yuhw/wc/nue-cc/tmp.npz',coords=coords, ft=ft)
     if vox :
         vox_coords, vox_ft = voxelize(coords, ft, resolution, vertex_assign_cut)
     else :

@@ -130,6 +130,7 @@ def vis_prediction_regseg(pred, truth, trad=None, cand=None, x=2, y=1, resolutio
 
     pred_idx = np.argmax(pred[:,-1])
     ax.scatter(pred[pred_idx,x], pred[pred_idx,y], marker='^', facecolors='none', edgecolors='r', label='Prediction Max')
+    print('pred: ', pred_idx, pred[pred_idx,0], pred[pred_idx,1], pred[pred_idx,2])
 
     truth_idx = np.argmax(truth[:,-1])
     img = ax.scatter(truth[truth_idx,x], truth[truth_idx,y], marker='s', facecolors='none', edgecolors='r', label='Truth')
